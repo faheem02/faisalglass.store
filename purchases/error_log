@@ -1,0 +1,22 @@
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 239
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 239
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 273
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 273
+[12-Jun-2026 14:50:55 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/save_purchase.php on line 41
+[12-Jun-2026 14:50:55 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 41
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:28:18 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:50:36 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 41
+[14-Jul-2026 23:50:36 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[14-Jul-2026 23:50:36 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[20-Jul-2026 23:13:37 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 41
+[20-Jul-2026 23:13:37 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[20-Jul-2026 23:13:37 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[26-Jul-2026 23:27:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 41
+[26-Jul-2026 23:27:56 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104
+[26-Jul-2026 23:27:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/purchases/save_purchase.php on line 104

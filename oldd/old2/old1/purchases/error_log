@@ -1,0 +1,6 @@
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 239
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 239
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 273
+[08-Jun-2026 15:37:56 Asia/Karachi] PHP Warning:  Undefined array key "refund_status" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/view_invoice.php on line 273
+[12-Jun-2026 14:50:55 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/save_purchase.php on line 41
+[12-Jun-2026 14:50:55 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/purchases/save_purchase.php on line 104

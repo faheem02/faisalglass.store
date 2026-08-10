@@ -1,0 +1,6 @@
+[05-Jun-2026 17:54:17 Asia/Karachi] PHP Fatal error:  Uncaught TypeError: mysqli_num_rows(): Argument #1 ($result) must be of type mysqli_result, bool given in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/employees/add_employee.php:29
+Stack trace:
+#0 /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/employees/add_employee.php(29): mysqli_num_rows()
+#1 /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/employees/add_employee.php(242): generateEmployeeCode()
+#2 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/employees/add_employee.php on line 29

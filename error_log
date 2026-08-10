@@ -1,0 +1,12 @@
+[15-Jul-2026 12:58:32 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Too many connections in /home1/atrmarke/public_html/faisalglass.store/includes/database.php:17
+Stack trace:
+#0 /home1/atrmarke/public_html/faisalglass.store/includes/database.php(17): mysqli_connect('localhost', 'atrmarke_faysal...', 'ATRsales123', 'atrmarke_faysal...')
+#1 /home1/atrmarke/public_html/faisalglass.store/login.php(14): include('/home1/atrmarke...')
+#2 {main}
+  thrown in /home1/atrmarke/public_html/faisalglass.store/includes/database.php on line 17
+[25-Jul-2026 15:10:19 UTC] PHP Warning:  session_start(): open(/var/cpanel/php/sessions/ea-php82/sess_1b736dc0d88822133f16af57a420e759, O_RDWR) failed: Disk quota exceeded (122) in /home1/atrmarke/public_html/faisalglass.store/index.php on line 10
+[25-Jul-2026 15:10:19 UTC] PHP Warning:  session_start(): Failed to read session data: files (path: /var/cpanel/php/sessions/ea-php82) in /home1/atrmarke/public_html/faisalglass.store/index.php on line 10
+[25-Jul-2026 15:10:20 UTC] PHP Warning:  session_start(): open(/var/cpanel/php/sessions/ea-php82/sess_1b736dc0d88822133f16af57a420e759, O_RDWR) failed: Disk quota exceeded (122) in /home1/atrmarke/public_html/faisalglass.store/login.php on line 11
+[25-Jul-2026 15:10:20 UTC] PHP Warning:  session_start(): Failed to read session data: files (path: /var/cpanel/php/sessions/ea-php82) in /home1/atrmarke/public_html/faisalglass.store/login.php on line 11
+[25-Jul-2026 20:10:20 Asia/Karachi] PHP Warning:  session_start(): open(/var/cpanel/php/sessions/ea-php82/sess_1b736dc0d88822133f16af57a420e759, O_RDWR) failed: Disk quota exceeded (122) in /home1/atrmarke/public_html/faisalglass.store/includes/txt.php on line 36
+[25-Jul-2026 20:10:20 Asia/Karachi] PHP Warning:  session_start(): Failed to read session data: files (path: /var/cpanel/php/sessions/ea-php82) in /home1/atrmarke/public_html/faisalglass.store/includes/txt.php on line 36

@@ -1,0 +1,5 @@
+[05-Jun-2026 17:30:18 Asia/Karachi] PHP Fatal error:  Uncaught TypeError: mysqli_fetch_assoc(): Argument #1 ($result) must be of type mysqli_result, bool given in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/suppliers/supplier_detail.php:51
+Stack trace:
+#0 /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/suppliers/supplier_detail.php(51): mysqli_fetch_assoc()
+#1 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/suppliers/supplier_detail.php on line 51

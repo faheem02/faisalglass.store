@@ -1,0 +1,287 @@
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "product_id" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 34
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "client_size" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 35
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "multiple_of" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 36
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "std_height" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 37
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "std_width" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 38
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 39
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "quantity" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 40
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "total_area" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 41
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "rate" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 42
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Warning:  Undefined array key "discount_percent" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 43
+[06-Jun-2026 12:49:11 Asia/Karachi] PHP Fatal error:  Uncaught TypeError: count(): Argument #1 ($value) must be of type Countable|array, null given in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php:47
+Stack trace:
+#0 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 47
+[06-Jun-2026 12:54:30 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:54:30 Asia/Karachi] Sale Error: Failed to save sale details: Unknown column 'client_size' in 'field list'
+[06-Jun-2026 12:54:33 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:54:33 Asia/Karachi] Sale Error: Failed to save sale details: Unknown column 'client_size' in 'field list'
+[06-Jun-2026 12:55:19 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:55:19 Asia/Karachi] Sale Error: Failed to save sale details: Unknown column 'client_size' in 'field list'
+[06-Jun-2026 12:57:16 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:57:16 Asia/Karachi] Product Data: Array
+(
+    [0] => Array
+        (
+            [product_id] => 1
+            [product_name] => 
+                                    6mm Clear Glass                                
+            [client_height] => 12
+            [client_width] => 15
+            [client_size] => 12 x 15
+            [multiple_of] => 3
+            [std_height] => 12
+            [std_width] => 15
+            [uom] => Inch
+            [quantity] => 1
+            [total_area] => 1.25
+            [rate] => 1500.00
+            [discount_percent] => 0
+            [amount] => 1875
+        )
+
+    [1] => Array
+        (
+            [product_id] => 1
+            [product_name] => 
+                                    6mm Clear Glass                                
+            [client_height] => 96
+            [client_width] => 65
+            [client_size] => 96 x 65
+            [multiple_of] => 3
+            [std_height] => 96
+            [std_width] => 66
+            [uom] => Inch
+            [quantity] => 1
+            [total_area] => 44.00
+            [rate] => 1500
+            [discount_percent] => 0
+            [amount] => 66000
+        )
+
+)
+
+[06-Jun-2026 12:57:16 Asia/Karachi] Insert Detail Query: INSERT INTO sale_details (sale_id, product_id, client_height, client_width, client_size,
+                                  multiple_of, std_height, std_width, uom, quantity, area, rate, 
+                                  discount_percentage, amount) 
+                                  VALUES ('4', '1', '12', '15', '12 x 15',
+                                  '3', '12', '15', 'Inch', '1', '1.25', 
+                                  '1500', '0', '1875')
+[06-Jun-2026 12:57:16 Asia/Karachi] Insert Detail Query: INSERT INTO sale_details (sale_id, product_id, client_height, client_width, client_size,
+                                  multiple_of, std_height, std_width, uom, quantity, area, rate, 
+                                  discount_percentage, amount) 
+                                  VALUES ('4', '1', '96', '65', '96 x 65',
+                                  '3', '96', '66', 'Inch', '1', '44', 
+                                  '1500', '0', '66000')
+[06-Jun-2026 12:57:19 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:57:19 Asia/Karachi] Product Data: Array
+(
+    [0] => Array
+        (
+            [product_id] => 1
+            [product_name] => 
+                                    6mm Clear Glass                                
+            [client_height] => 12
+            [client_width] => 15
+            [client_size] => 12 x 15
+            [multiple_of] => 3
+            [std_height] => 12
+            [std_width] => 15
+            [uom] => Inch
+            [quantity] => 1
+            [total_area] => 1.25
+            [rate] => 1500.00
+            [discount_percent] => 0
+            [amount] => 1875
+        )
+
+    [1] => Array
+        (
+            [product_id] => 1
+            [product_name] => 
+                                    6mm Clear Glass                                
+            [client_height] => 96
+            [client_width] => 65
+            [client_size] => 96 x 65
+            [multiple_of] => 3
+            [std_height] => 96
+            [std_width] => 66
+            [uom] => Inch
+            [quantity] => 1
+            [total_area] => 44.00
+            [rate] => 1500
+            [discount_percent] => 0
+            [amount] => 66000
+        )
+
+)
+
+[06-Jun-2026 12:57:19 Asia/Karachi] Insert Detail Query: INSERT INTO sale_details (sale_id, product_id, client_height, client_width, client_size,
+                                  multiple_of, std_height, std_width, uom, quantity, area, rate, 
+                                  discount_percentage, amount) 
+                                  VALUES ('5', '1', '12', '15', '12 x 15',
+                                  '3', '12', '15', 'Inch', '1', '1.25', 
+                                  '1500', '0', '1875')
+[06-Jun-2026 12:57:19 Asia/Karachi] Insert Detail Query: INSERT INTO sale_details (sale_id, product_id, client_height, client_width, client_size,
+                                  multiple_of, std_height, std_width, uom, quantity, area, rate, 
+                                  discount_percentage, amount) 
+                                  VALUES ('5', '1', '96', '65', '96 x 65',
+                                  '3', '96', '66', 'Inch', '1', '44', 
+                                  '1500', '0', '66000')
+[06-Jun-2026 12:57:24 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 12:57:24 Asia/Karachi] Product Data: Array
+(
+    [0] => Array
+        (
+            [product_id] => 1
+            [product_name] => 
+                                    6mm Clear Glass                                
+            [client_height] => 12
+            [client_width] => 15
+            [client_size] => 12 x 15
+            [multiple_of] => 3
+            [std_height] => 12
+            [std_width] => 15
+            [uom] => Inch
+            [quantity] => 1
+            [total_area] => 1.25
+            [rate] => 1500.00
+            [discount_percent] => 0
+            [amount] => 1875
+        )
+
+    [1] => Array
+        (
+            [product_id] => 1
+            [product_name] => 
+                                    6mm Clear Glass                                
+            [client_height] => 96
+            [client_width] => 65
+            [client_size] => 96 x 65
+            [multiple_of] => 3
+            [std_height] => 96
+            [std_width] => 66
+            [uom] => Inch
+            [quantity] => 1
+            [total_area] => 44.00
+            [rate] => 1500
+            [discount_percent] => 0
+            [amount] => 66000
+        )
+
+)
+
+[06-Jun-2026 12:57:24 Asia/Karachi] Insert Detail Query: INSERT INTO sale_details (sale_id, product_id, client_height, client_width, client_size,
+                                  multiple_of, std_height, std_width, uom, quantity, area, rate, 
+                                  discount_percentage, amount) 
+                                  VALUES ('6', '1', '12', '15', '12 x 15',
+                                  '3', '12', '15', 'Inch', '1', '1.25', 
+                                  '1500', '0', '1875')
+[06-Jun-2026 12:57:24 Asia/Karachi] Insert Detail Query: INSERT INTO sale_details (sale_id, product_id, client_height, client_width, client_size,
+                                  multiple_of, std_height, std_width, uom, quantity, area, rate, 
+                                  discount_percentage, amount) 
+                                  VALUES ('6', '1', '96', '65', '96 x 65',
+                                  '3', '96', '66', 'Inch', '1', '44', 
+                                  '1500', '0', '66000')
+[06-Jun-2026 13:00:55 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 13:00:58 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 13:01:46 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 27
+[06-Jun-2026 13:09:29 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 30
+[06-Jun-2026 17:39:50 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 30
+[08-Jun-2026 12:05:21 Asia/Karachi] PHP Warning:  Undefined array key "remaining_amount" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 30
+[08-Jun-2026 15:12:44 Asia/Karachi] PHP Warning:  Undefined variable $company_email in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 86
+[08-Jun-2026 15:12:54 Asia/Karachi] PHP Warning:  Undefined variable $company_email in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 86
+[08-Jun-2026 15:12:56 Asia/Karachi] PHP Warning:  Undefined variable $company_email in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 86
+[08-Jun-2026 15:13:08 Asia/Karachi] PHP Warning:  Undefined variable $company_email in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 86
+[08-Jun-2026 15:13:09 Asia/Karachi] PHP Warning:  Undefined variable $company_email in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 86
+[08-Jun-2026 15:13:11 Asia/Karachi] PHP Warning:  Undefined variable $company_email in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 86
+[09-Jun-2026 10:46:26 Asia/Karachi] PHP Warning:  Undefined array key "customer_id" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 25
+[10-Jun-2026 17:50:36 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[10-Jun-2026 17:50:36 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[10-Jun-2026 18:01:43 Asia/Karachi] PHP Fatal error:  Uncaught Error: Call to undefined function renderProductTable() in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php:329
+Stack trace:
+#0 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 329
+[10-Jun-2026 18:32:46 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[10-Jun-2026 18:32:46 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[10-Jun-2026 18:32:46 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[10-Jun-2026 18:32:46 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 11:09:12 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 11:09:12 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 11:09:12 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 11:09:12 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 11:13:22 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 11:13:22 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[12-Jun-2026 14:44:50 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 12:43:44 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 12:43:44 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 15:11:21 Asia/Karachi] PHP Warning:  Undefined variable $unit_area in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 313
+[15-Jun-2026 15:11:21 Asia/Karachi] PHP Warning:  Undefined variable $unit_area in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/print_invoice.php on line 313
+[15-Jun-2026 20:10:33 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 20:10:33 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 20:10:33 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 20:10:33 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[15-Jun-2026 20:10:33 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/sales/save_sale.php on line 99
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:51:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 22:54:23 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:05:26 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:05:26 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:07:22 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:07:22 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[14-Jul-2026 23:11:56 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:51:39 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:51:39 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:51:39 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:51:39 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:51:39 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:51:39 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:54:22 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:54:22 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:54:22 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:54:22 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:54:22 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 17:54:22 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:06:55 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:06:55 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:06:55 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:06:55 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:09:11 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:09:11 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:09:11 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143
+[16-Jul-2026 18:09:11 Asia/Karachi] PHP Deprecated:  mysqli_real_escape_string(): Passing null to parameter #2 ($string) of type string is deprecated in /home1/atrmarke/public_html/faisalglass.store/sales/save_sale.php on line 143

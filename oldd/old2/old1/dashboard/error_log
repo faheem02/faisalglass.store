@@ -1,0 +1,29 @@
+[05-Jun-2026 16:35:17 Asia/Karachi] PHP Warning:  Undefined variable $sidebar_html in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 223
+[05-Jun-2026 16:39:39 Asia/Karachi] PHP Warning:  Undefined variable $sidebar_html in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 223
+[05-Jun-2026 11:45:02 UTC] PHP Warning:  include(../config/db.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 17
+[05-Jun-2026 11:45:02 UTC] PHP Warning:  include(): Failed opening '../config/db.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 17
+[05-Jun-2026 11:45:02 UTC] PHP Warning:  include(../config/txt.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 18
+[05-Jun-2026 11:45:02 UTC] PHP Warning:  include(): Failed opening '../config/txt.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 18
+[05-Jun-2026 11:45:02 UTC] PHP Warning:  Undefined array key "user_name" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 22
+[05-Jun-2026 11:45:02 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function query() in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php:46
+Stack trace:
+#0 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 46
+[05-Jun-2026 11:45:05 UTC] PHP Warning:  include(../config/db.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 17
+[05-Jun-2026 11:45:05 UTC] PHP Warning:  include(): Failed opening '../config/db.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 17
+[05-Jun-2026 11:45:05 UTC] PHP Warning:  include(../config/txt.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 18
+[05-Jun-2026 11:45:05 UTC] PHP Warning:  include(): Failed opening '../config/txt.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 18
+[05-Jun-2026 11:45:05 UTC] PHP Warning:  Undefined array key "user_name" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 22
+[05-Jun-2026 11:45:05 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function query() in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php:46
+Stack trace:
+#0 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 46
+[05-Jun-2026 11:45:23 UTC] PHP Warning:  include(../config/db.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 17
+[05-Jun-2026 11:45:23 UTC] PHP Warning:  include(): Failed opening '../config/db.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 17
+[05-Jun-2026 11:45:23 UTC] PHP Warning:  include(../config/txt.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 18
+[05-Jun-2026 11:45:23 UTC] PHP Warning:  include(): Failed opening '../config/txt.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 18
+[05-Jun-2026 11:45:23 UTC] PHP Warning:  Undefined array key "user_name" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 22
+[05-Jun-2026 11:45:23 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function query() in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php:46
+Stack trace:
+#0 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/dashboard/dashboard.php on line 46

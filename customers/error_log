@@ -1,0 +1,21 @@
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  include(../includes/db_connection.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 8
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  include(): Failed opening '../includes/db_connection.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 8
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  include(../includes/functions.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 9
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  include(): Failed opening '../includes/functions.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 9
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  include(../includes/topbar.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 135
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  include(): Failed opening '../includes/topbar.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 135
+[06-Jun-2026 08:34:46 UTC] PHP Warning:  Undefined variable $conn in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 177
+[06-Jun-2026 08:34:46 UTC] PHP Fatal error:  Uncaught TypeError: mysqli_query(): Argument #1 ($mysql) must be of type mysqli, null given in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php:177
+Stack trace:
+#0 /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php(177): mysqli_query()
+#1 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 177
+[06-Jun-2026 13:37:03 Asia/Karachi] PHP Warning:  include(../includes/topbar.php): Failed to open stream: No such file or directory in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 152
+[06-Jun-2026 13:37:03 Asia/Karachi] PHP Warning:  include(): Failed opening '../includes/topbar.php' for inclusion (include_path='.:/opt/alt/php80/usr/share/pear:/opt/alt/php80/usr/share/php:/usr/share/pear:/usr/share/php') in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 152
+[06-Jun-2026 14:31:50 Asia/Karachi] PHP Warning:  Undefined array key "user_name" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_creditor.php on line 13
+[06-Jun-2026 14:32:39 Asia/Karachi] PHP Warning:  Undefined array key "user_name" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/view_customer.php on line 13
+[06-Jun-2026 14:49:43 Asia/Karachi] PHP Fatal error:  Uncaught TypeError: mysqli_fetch_assoc(): Argument #1 ($result) must be of type mysqli_result, bool given in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/customer_detail.php:36
+Stack trace:
+#0 /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/customer_detail.php(36): mysqli_fetch_assoc()
+#1 {main}
+  thrown in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/customers/customer_detail.php on line 36

@@ -1,0 +1,2 @@
+[12-Jun-2026 12:35:24 Asia/Karachi] PHP Warning:  Undefined array key "uom" in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/quotations/save_quotation.php on line 51
+[12-Jun-2026 12:35:24 Asia/Karachi] PHP Warning:  Trying to access array offset on value of type null in /home1/atrmarke/public_html/atrdemolive.site/faysal_glass/quotations/save_quotation.php on line 66
