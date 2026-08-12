@@ -78,11 +78,12 @@ $(document).ready(function() {
             { data: 'hold_date' },
             { data: 'customer_name' },
             { data: 'grand_total', render: data => '₨ ' + parseFloat(data).toFixed(2) },
-            { data: 'status', render: data => `<span class="badge badge-${data=='hold'?'warning':'success'}">${data}</span>` },
+            { data: 'status', render: data => `<span class="badge badge-${data=='hold'?'warning':(data=='converted'?'success':'secondary')}">${data}</span>` },
             { data: 'created_by_name' },
             { data: null, render: function(data) {
-                let btns = `<a href="add_sale.php?load_hold_id=${data.id}" class="btn btn-sm btn-primary"><i class="fas fa-download"></i> Load</a>`;
+                let btns = '';
                 if(data.status == 'hold') {
+                    btns += `<a href="add_sale.php?load_hold_id=${data.id}" class="btn btn-sm btn-primary"><i class="fas fa-download"></i> Load</a>`;
                     btns += `<button class="btn btn-sm btn-danger ml-1 delete-hold" data-id="${data.id}"><i class="fas fa-trash"></i> Delete</button>`;
                 }
                 return btns;

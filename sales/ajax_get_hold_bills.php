@@ -7,9 +7,9 @@ $hold_no = isset($_GET['hold_no']) ? mysqli_real_escape_string($conn, $_GET['hol
 $customer = isset($_GET['customer']) ? mysqli_real_escape_string($conn, $_GET['customer']) : '';
 $status = isset($_GET['status']) ? mysqli_real_escape_string($conn, $_GET['status']) : 'hold';
 
-$sql = "SELECT h.id, h.hold_no, h.hold_date, c.customer_name, h.grand_total, h.status, u.username as created_by_name 
+$sql = "SELECT h.id, h.hold_no, h.hold_date, COALESCE(c.customer_name, 'Walk-In') as customer_name, h.grand_total, h.status, u.username as created_by_name 
         FROM hold_sales_master h 
-        JOIN customers c ON h.customer_id = c.id 
+        LEFT JOIN customers c ON h.customer_id = c.id 
         LEFT JOIN users u ON h.created_by = u.id 
         WHERE h.status = '$status'";
 if($hold_no) $sql .= " AND h.hold_no LIKE '%$hold_no%'";

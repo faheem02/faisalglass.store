@@ -112,9 +112,9 @@ if(isset($_GET['action'])) {
     
     // Get list of Hold Bills
     if($_GET['action'] == 'get_hold_bills') {
-        $sql = "SELECT h.id, h.hold_no, h.hold_date, c.customer_name, h.grand_total 
+        $sql = "SELECT h.id, h.hold_no, h.hold_date, COALESCE(c.customer_name, 'Walk-In') as customer_name, h.grand_total 
                 FROM hold_sales_master h 
-                JOIN customers c ON h.customer_id = c.id 
+                LEFT JOIN customers c ON h.customer_id = c.id 
                 WHERE h.status = 'hold' 
                 ORDER BY h.hold_date DESC";
         $result = mysqli_query($conn, $sql);
@@ -126,17 +126,21 @@ if(isset($_GET['action'])) {
         exit;
     }
     
-    // Load single Hold Bill
+    // Load single Hold Bill (only status = 'hold' can be loaded back)
     if($_GET['action'] == 'load_hold' && isset($_GET['id'])) {
         $hold_id = intval($_GET['id']);
-        $master = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM hold_sales_master WHERE id = $hold_id"));
+        $master_res = mysqli_query($conn, "SELECT * FROM hold_sales_master WHERE id = $hold_id AND status = 'hold'");
+        $master = $master_res ? mysqli_fetch_assoc($master_res) : null;
         if(!$master) {
-            echo json_encode(['success' => false, 'message' => 'Hold Bill not found']);
+            echo json_encode(['success' => false, 'message' => 'Hold Bill not found (may already be converted or deleted)']);
             exit;
         }
         $details = mysqli_query($conn, "SELECT * FROM hold_sales_details WHERE hold_id = $hold_id");
         $products = [];
         while($det = mysqli_fetch_assoc($details)) {
+            // area is per-unit sq ft in hold_sales_details; expose as a float so
+            // the JS toFixed() calls work (JSON encodes PHP decimals as strings otherwise)
+            $det['area_per_unit'] = floatval($det['area']);
             $products[] = $det;
         }
         echo json_encode([
@@ -193,6 +197,36 @@ if ($edit_id > 0) {
             $det['area_per_unit'] = $det['quantity'] > 0 ? $det['area'] / $det['quantity'] : 0;
             $edit_products[] = $det;
         }
+    }
+}
+
+// Load a Hold Bill directly via ?load_hold_id=N (used by hold_bills.php "Load" button)
+$hold_load_id = isset($_GET['load_hold_id']) ? intval($_GET['load_hold_id']) : 0;
+$hold_load_data = null;
+if ($hold_load_id > 0) {
+    $page_title = "Add Sale (Loading Hold Bill)";
+    $hold_res = mysqli_query($conn, "SELECT * FROM hold_sales_master WHERE id = $hold_load_id AND status = 'hold'");
+    if ($hold_res && mysqli_num_rows($hold_res) > 0) {
+        $hold_master = mysqli_fetch_assoc($hold_res);
+        $hold_details_res = mysqli_query($conn, "SELECT * FROM hold_sales_details WHERE hold_id = $hold_load_id");
+        $hold_products = [];
+        if ($hold_details_res) {
+            while ($hd = mysqli_fetch_assoc($hold_details_res)) {
+                $hd['area_per_unit'] = floatval($hd['area']);
+                $hold_products[] = $hd;
+            }
+        }
+        $hold_load_data = [
+            'hold_id' => $hold_master['id'],
+            'customer_id' => $hold_master['customer_id'],
+            'subtotal' => $hold_master['subtotal'],
+            'discount_percentage' => $hold_master['discount_percentage'],
+            'discount_amount' => $hold_master['discount_amount'],
+            'other_charges' => $hold_master['other_charges'],
+            'grand_total' => $hold_master['grand_total'],
+            'remarks' => $hold_master['remarks'],
+            'products' => $hold_products
+        ];
     }
 }
 
@@ -555,6 +589,13 @@ const editData = <?php echo json_encode([
 ]); ?>;
 <?php else: ?>
 const editData = null;
+<?php endif; ?>
+
+// Hold bill data passed via ?load_hold_id=N (from hold_bills.php "Load" button)
+<?php if ($hold_load_data): ?>
+const holdLoadData = <?php echo json_encode($hold_load_data); ?>;
+<?php else: ?>
+const holdLoadData = null;
 <?php endif; ?>
 
 // Function to round up to next multiple
@@ -1021,50 +1062,55 @@ function loadHoldBillsList() {
     });
 }
 
+// Populate the sale form from a hold bill payload (shared by modal load + ?load_hold_id)
+function populateHoldForm(res) {
+    // Set hold_id hidden field
+    $('#hold_id').remove();
+    $('<input>').attr({ type: 'hidden', id: 'hold_id', name: 'hold_id', value: res.hold_id }).appendTo('#saleForm');
+    
+    // Set customer
+    $('#customer_id').val(res.customer_id).trigger('change');
+    
+    // Set totals
+    $('#other_charges').val(res.other_charges);
+    $('textarea[name="remarks"]').val(res.remarks || '');
+    
+    // Clear existing product groups
+    $('#productGroupsContainer').empty();
+    productGroupId = 0;
+    
+    // Rebuild product groups from hold details
+    let productsByGroup = {};
+    $.each(res.products, function(i, item) {
+        let key = item.product_id;
+        if(!productsByGroup[key]) productsByGroup[key] = [];
+        productsByGroup[key].push(item);
+    });
+    
+    // Create a group for each product
+    $.each(productsByGroup, function(productId, items) {
+        let groupId = addProductGroup(items[0].rate); // pass rate
+        let groupCard = $(`.product-group-card[data-group-id="${groupId}"]`);
+        // Set product select
+        let productSelect = groupCard.find('.product-select');
+        productSelect.val(productId).trigger('change');
+        // Remove default empty row (row 0)
+        groupCard.find('.size-rows-container').empty();
+        // Add each size row
+        $.each(items, function(idx, item) {
+            addSizeRowWithData(groupId, item);
+        });
+    });
+    
+    calculateAllTotals();
+}
+
 // Load a specific hold bill into the form
 $(document).on('click', '.load-hold', function() {
     let id = $(this).data('id');
     $.getJSON(`add_sale.php?action=load_hold&id=${id}`, function(res) {
         if(res.success) {
-            // Set hold_id hidden field
-            $('#hold_id').remove();
-            $('<input>').attr({ type: 'hidden', id: 'hold_id', name: 'hold_id', value: res.hold_id }).appendTo('#saleForm');
-            
-            // Set customer
-            $('#customer_id').val(res.customer_id).trigger('change');
-            
-            // Set totals
-            $('#other_charges').val(res.other_charges);
-            $('#remarks').val(res.remarks);
-            
-            // Clear existing product groups
-            $('#productGroupsContainer').empty();
-            productGroupId = 0;
-            
-            // Rebuild product groups from hold details
-            let productsByGroup = {};
-            $.each(res.products, function(i, item) {
-                let key = item.product_id;
-                if(!productsByGroup[key]) productsByGroup[key] = [];
-                productsByGroup[key].push(item);
-            });
-            
-            // Create a group for each product
-            $.each(productsByGroup, function(productId, items) {
-                let groupId = addProductGroup(items[0].rate); // pass rate
-                let groupCard = $(`.product-group-card[data-group-id="${groupId}"]`);
-                // Set product select
-                let productSelect = groupCard.find('.product-select');
-                productSelect.val(productId).trigger('change');
-                // Remove default empty row (row 0)
-                groupCard.find('.size-rows-container').empty();
-                // Add each size row
-                $.each(items, function(idx, item) {
-                    addSizeRowWithData(groupId, item);
-                });
-            });
-            
-            calculateAllTotals();
+            populateHoldForm(res);
             $('#holdBillsModal').modal('hide');
             Swal.fire('Loaded', 'Hold bill loaded. You can modify and then Save Sale.', 'success');
         } else {
@@ -1078,6 +1124,15 @@ function addSizeRowWithData(groupId, item) {
     const container = $(`.size-rows-container[data-group-id="${groupId}"]`);
     const rowCount = container.children('.size-row').length;
     const newRowId = rowCount;
+    
+    // Compute values first (parse everything so toFixed()/math never run on strings)
+    const perUnitArea = parseFloat(item.area_per_unit) || parseFloat(item.area) || 0;
+    const qty = parseFloat(item.quantity) || 0;
+    const rate = parseFloat(item.rate) || 0;
+    const discPct = parseFloat(item.discount_percentage) || 0;
+    const totArea = perUnitArea * qty;
+    const amt = totArea * rate;
+    const netAmt = amt - (amt * (discPct / 100));
     
     const newRow = `
         <tr class="size-row" data-row-id="${newRowId}" data-group-id="${groupId}">
@@ -1094,26 +1149,18 @@ function addSizeRowWithData(groupId, item) {
             <td><select class="form-control multiple-of" data-group-id="${groupId}" data-row-id="${newRowId}">${getMultipleOptions(item.multiple_of)}</select></td>
             <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="${newRowId}" readonly value="${item.std_height}"></td>
             <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="${newRowId}" readonly value="${item.std_width}"></td>
-            <td class="area-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${(item.area_per_unit || item.area).toFixed(2)}</strong><br><small>sq ft</small></td>
-            <td class="total-area-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${((item.area_per_unit || item.area) * item.quantity).toFixed(2)}</strong><br><small>sq ft</small></td>
-            <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="${newRowId}" value="${item.rate}"></td>
-            <td class="amount-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${((item.area_per_unit || item.area) * item.quantity * item.rate).toFixed(2)}</strong></td>
-            <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="${newRowId}" value="${item.discount_percentage}"></td>
-            <td class="net-amount-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${item.amount}</strong></td>
+            <td class="area-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${perUnitArea.toFixed(2)}</strong><br><small>sq ft</small></td>
+            <td class="total-area-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${totArea.toFixed(2)}</strong><br><small>sq ft</small></td>
+            <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="${newRowId}" value="${rate}"></td>
+            <td class="amount-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${amt.toFixed(2)}</strong></td>
+            <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="${newRowId}" value="${discPct}"></td>
+            <td class="net-amount-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${netAmt.toFixed(2)}</strong></td>
             <td><button type="button" class="btn btn-sm btn-danger remove-size-row" data-group-id="${groupId}" data-row-id="${newRowId}"><i class="fas fa-trash"></i></button></td>
         </tr>
     `;
     container.append(newRow);
     
     // Set data-value attributes for calculation functions
-    const perUnitArea = parseFloat(item.area_per_unit || item.area) || 0;
-    const qty = parseFloat(item.quantity) || 0;
-    const rate = parseFloat(item.rate) || 0;
-    const totArea = perUnitArea * qty;
-    const amt = totArea * rate;
-    const discPct = parseFloat(item.discount_percentage) || 0;
-    const netAmt = amt - (amt * (discPct / 100));
-    
     $(`.area-cell[data-group-id="${groupId}"][data-row-id="${newRowId}"]`).data('value', perUnitArea);
     $(`.total-area-cell[data-group-id="${groupId}"][data-row-id="${newRowId}"]`).data('value', totArea);
     $(`.amount-cell[data-group-id="${groupId}"][data-row-id="${newRowId}"]`).data('value', amt);
@@ -1296,6 +1343,12 @@ $(document).ready(function() {
         
         // Set payment type and trigger change to show/hide bank/advance
         $('#payment_type').val(editData.payment_type).trigger('change');
+    }
+    
+    // Auto-load hold bill passed via ?load_hold_id=N
+    if(holdLoadData) {
+        populateHoldForm(holdLoadData);
+        Swal.fire('Loaded', 'Hold bill loaded. You can modify and then Save Sale.', 'success');
     }
     
     $('#customer_id').trigger('change');

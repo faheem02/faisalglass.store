@@ -318,16 +318,23 @@ if(isset($_POST['save_sale'])) {
                 }
             }
             
-            mysqli_commit($conn);
-            // After successful sale, if this sale was loaded from a hold bill, remove/update hold
+            // If this sale was loaded from a hold bill, remove the hold bill
+            // (inside the transaction so it commits/rolls back with the sale)
             if(isset($_POST['hold_id']) && !empty($_POST['hold_id'])) {
                 $hold_id = intval($_POST['hold_id']);
-                // Option 1: Delete the hold bill
-                mysqli_query($conn, "DELETE FROM hold_sales_details WHERE hold_id = $hold_id");
-                mysqli_query($conn, "DELETE FROM hold_sales_master WHERE id = $hold_id");
-                // Option 2: Mark as converted (if you prefer to keep history)
-                // mysqli_query($conn, "UPDATE hold_sales_master SET status = 'converted' WHERE id = $hold_id");
+                $hold_check = mysqli_query($conn, "SELECT status FROM hold_sales_master WHERE id = $hold_id");
+                if($hold_check && mysqli_num_rows($hold_check) > 0) {
+                    $hold_status = mysqli_fetch_assoc($hold_check)['status'];
+                    if($hold_status == 'hold') {
+                        if(!mysqli_query($conn, "DELETE FROM hold_sales_details WHERE hold_id = $hold_id") ||
+                           !mysqli_query($conn, "DELETE FROM hold_sales_master WHERE id = $hold_id")) {
+                            throw new Exception("Failed to remove hold bill: " . mysqli_error($conn));
+                        }
+                    }
+                }
             }
+            
+            mysqli_commit($conn);
             $response['success'] = true;
             $response['message'] = $edit_id > 0 ? "Sale invoice updated successfully!" : "Sale invoice created successfully!";
             $response['invoice_no'] = $invoice_no;

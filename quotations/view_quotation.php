@@ -20,15 +20,64 @@ $page_title = "View Quotations";
 $success_msg = '';
 $error_msg = '';
 
-// Delete quotation if requested
+// Delete quotation if requested (also reverses stock + customer ledger, like sale deletion)
 if(isset($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
     mysqli_begin_transaction($conn);
     try {
+        // 1. Restore stock: add back the area consumed by this quotation
+        $det_q = mysqli_query($conn, "SELECT product_id, area, quantity FROM quotation_details WHERE quotation_id = $delete_id");
+        if($det_q === false) {
+            throw new Exception("Failed to read quotation details: " . mysqli_error($conn));
+        }
+        while($det = mysqli_fetch_assoc($det_q)) {
+            $pid = intval($det['product_id']);
+            $total_area = floatval($det['area']) * floatval($det['quantity']);
+            
+            // Only reverse stock if this quotation actually deducted it (skips pre-posting legacy quotations)
+            $posted_q = "SELECT id FROM inventory_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $delete_id AND product_id = $pid LIMIT 1";
+            $posted_r = mysqli_query($conn, $posted_q);
+            $posted = ($posted_r && mysqli_num_rows($posted_r) > 0);
+            
+            if($posted) {
+                $stock_q = "SELECT balance_qty FROM inventory_ledger WHERE product_id = $pid ORDER BY id DESC LIMIT 1";
+                $stock_r = mysqli_query($conn, $stock_q);
+                $cur = 0;
+                if($stock_r && mysqli_num_rows($stock_r) > 0) {
+                    $cur = floatval(mysqli_fetch_assoc($stock_r)['balance_qty']);
+                }
+                $new_stock = $cur + $total_area;
+                if(!mysqli_query($conn, "INSERT INTO inventory_ledger (date, product_id, reference_type, reference_id, qty_in, qty_out, balance_qty, unit_price, total_amount, remarks) VALUES (CURDATE(), $pid, 'ADJUSTMENT', $delete_id, $total_area, 0, $new_stock, 0, 0, 'Quotation Deletion Restore')")) {
+                    throw new Exception("Failed to restore stock: " . mysqli_error($conn));
+                }
+                // Remove the original QUOTATION stock entries
+                if(!mysqli_query($conn, "DELETE FROM inventory_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $delete_id AND product_id = $pid")) {
+                    throw new Exception("Failed to clean quotation stock entries: " . mysqli_error($conn));
+                }
+            }
+        }
+        
+        // 2. Remove customer ledger entry and recompute customer balance
+        $qm = mysqli_query($conn, "SELECT customer_id FROM quotation_master WHERE id = $delete_id");
+        $quotation = ($qm && mysqli_num_rows($qm) > 0) ? mysqli_fetch_assoc($qm) : null;
+        if($quotation) {
+            if(!mysqli_query($conn, "DELETE FROM customer_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $delete_id")) {
+                throw new Exception("Failed to remove ledger entry: " . mysqli_error($conn));
+            }
+            $bal_q = mysqli_query($conn, "SELECT COALESCE(SUM(debit) - SUM(credit), 0) as balance FROM customer_ledger WHERE customer_id = {$quotation['customer_id']}");
+            $new_bal = 0;
+            if($bal_q && mysqli_num_rows($bal_q) > 0) {
+                $new_bal = floatval(mysqli_fetch_assoc($bal_q)['balance']);
+            }
+            if(!mysqli_query($conn, "UPDATE customers SET current_balance = $new_bal WHERE id = {$quotation['customer_id']}")) {
+                throw new Exception("Failed to update customer balance: " . mysqli_error($conn));
+            }
+        }
+        
         mysqli_query($conn, "DELETE FROM quotation_details WHERE quotation_id = $delete_id");
         mysqli_query($conn, "DELETE FROM quotation_master WHERE id = $delete_id");
         mysqli_commit($conn);
-        $success_msg = "Quotation deleted successfully!";
+        $success_msg = "Quotation deleted successfully! Stock and customer ledger restored.";
     } catch(Exception $e) {
         mysqli_rollback($conn);
         $error_msg = "Failed to delete quotation: " . $e->getMessage();
@@ -155,14 +204,6 @@ $result = mysqli_query($conn, $query);
                                             <a href="print_quotation.php?id=<?php echo $row['id']; ?>" 
                                                class="btn btn-sm btn-primary" target="_blank" title="Print">
                                                 <i class="fas fa-print"></i>
-                                            </a>
-                                            <a href="add_quotation.php?edit_id=<?php echo $row['id']; ?>" 
-                                               class="btn btn-sm btn-warning" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="convert_quotation.php?id=<?php echo $row['id']; ?>" 
-                                               class="btn btn-sm btn-success" title="Convert to Sale">
-                                                <i class="fas fa-exchange-alt"></i>
                                             </a>
                                             <button class="btn btn-sm btn-danger" onclick="confirmDelete(<?php echo $row['id']; ?>)" title="Delete">
                                                 <i class="fas fa-trash"></i>

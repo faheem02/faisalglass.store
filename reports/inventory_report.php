@@ -68,11 +68,20 @@ $products_result = mysqli_query($conn, $products_query);
 // Calculate stock for each product
 $inventory_data = [];
 $total_stock_value = 0;
+$total_products = 0;
 $low_stock_count = 0;
 $out_of_stock_count = 0;
 
 while($product = mysqli_fetch_assoc($products_result)) {
     $product_id = $product['id'];
+    
+    // Get sizes for this product
+    $sizes_query = "SELECT * FROM product_sizes WHERE product_id = $product_id ORDER BY id ASC";
+    $sizes_result = mysqli_query($conn, $sizes_query);
+    $sizes_list = [];
+    while($sz = mysqli_fetch_assoc($sizes_result)) {
+        $sizes_list[] = $sz;
+    }
     
     // Get opening stock (before from_date)
     $opening_query = "SELECT COALESCE(SUM(qty_in) - SUM(qty_out), 0) as opening_stock
@@ -90,11 +99,11 @@ while($product = mysqli_fetch_assoc($products_result)) {
     $purchase_result = mysqli_query($conn, $purchase_query);
     $purchased_qty = floatval(mysqli_fetch_assoc($purchase_result)['purchased_qty']);
     
-    // Get sales between dates
+    // Get sales between dates (SALE + QUOTATION both reduce stock)
     $sale_query = "SELECT COALESCE(SUM(qty_out), 0) as sold_qty
                    FROM inventory_ledger 
                    WHERE product_id = $product_id 
-                   AND reference_type = 'SALE'
+                   AND reference_type IN ('SALE', 'QUOTATION')
                    AND date BETWEEN '$from_date' AND '$to_date'";
     $sale_result = mysqli_query($conn, $sale_query);
     $sold_qty = floatval(mysqli_fetch_assoc($sale_result)['sold_qty']);
@@ -108,6 +117,7 @@ while($product = mysqli_fetch_assoc($products_result)) {
     
     $stock_value = $current_stock * floatval($product['purchase_price']);
     $total_stock_value += $stock_value;
+    $total_products++;
     
     if($current_stock <= 0) {
         $out_of_stock_count++;
@@ -115,7 +125,7 @@ while($product = mysqli_fetch_assoc($products_result)) {
         $low_stock_count++;
     }
     
-    $inventory_data[] = [
+    $base_row = [
         'id' => $product_id,
         'product_code' => $product['product_code'],
         'product_name' => $product['product_name'],
@@ -125,12 +135,68 @@ while($product = mysqli_fetch_assoc($products_result)) {
         'purchase_price' => floatval($product['purchase_price']),
         'sale_price' => floatval($product['sale_price']),
         'min_stock_alert' => $product['min_stock_alert'],
-        'opening_stock' => $opening_stock,
         'purchased_qty' => $purchased_qty,
         'sold_qty' => $sold_qty,
         'current_stock' => $current_stock,
-        'stock_value' => $stock_value
+        'stock_value' => $stock_value,
+        'is_size_row' => false,
+        'size_label' => null,
+        'size_pieces' => null,
+        'size_area' => null
     ];
+    
+    if(count($sizes_list) > 1) {
+        // Multi-size product: one row per size
+        foreach($sizes_list as $sz) {
+            $sz_opening_query = "SELECT COALESCE(SUM(quantity),0) as area, COALESCE(SUM(pieces),0) as pieces
+                                 FROM opening_stock 
+                                 WHERE product_id = $product_id AND product_size_id = " . $sz['id'];
+            $sz_opening_result = mysqli_query($conn, $sz_opening_query);
+            $sz_open = mysqli_fetch_assoc($sz_opening_result);
+            
+            $sz_pieces_query = "SELECT COALESCE(SUM(pieces),0) as pieces
+                                FROM opening_stock 
+                                WHERE product_id = $product_id AND product_size_id = " . $sz['id'];
+            $sz_pieces_result = mysqli_query($conn, $sz_pieces_query);
+            $sz_pieces = mysqli_fetch_assoc($sz_pieces_result);
+            
+            $row = $base_row;
+            $row['is_size_row'] = true;
+            $row['size_label'] = $sz['size_label'];
+            $row['size_pieces'] = floatval($sz_pieces['pieces']);
+            $row['size_area'] = floatval($sz_open['area']);
+            $row['opening_stock'] = $row['size_area'];
+            $sz_rate = floatval($sz['purchase_rate'] ?? 0);
+            if($sz_rate > 0) $row['purchase_price'] = $sz_rate;
+            $inventory_data[] = $row;
+        }
+    } else {
+        // Single/zero-size product: one row with product-level data
+        $row = $base_row;
+        if(count($sizes_list) == 1) {
+            $row['size_label'] = $sizes_list[0]['size_label'];
+            $sz_opening_query = "SELECT COALESCE(SUM(pieces),0) as pieces
+                                 FROM opening_stock 
+                                 WHERE product_id = $product_id AND product_size_id = " . $sizes_list[0]['id'];
+            $sz_opening_result = mysqli_query($conn, $sz_opening_query);
+            $sz_open = mysqli_fetch_assoc($sz_opening_result);
+            $row['size_pieces'] = floatval($sz_open['pieces']);
+        } else {
+            // No explicit size entries - use product's own dimensions (products.length_feet / width_feet)
+            if(floatval($product['length_feet']) > 0 && floatval($product['width_feet']) > 0) {
+                $row['size_label'] = rtrim(rtrim(number_format($product['length_feet'], 2), '0'), '.')
+                                   . ' x ' . rtrim(rtrim(number_format($product['width_feet'], 2), '0'), '.') . ' ft';
+            }
+            $os_query = "SELECT COALESCE(SUM(pieces),0) as pieces
+                         FROM opening_stock 
+                         WHERE product_id = $product_id AND product_size_id IS NULL";
+            $os_result = mysqli_query($conn, $os_query);
+            $os_row = mysqli_fetch_assoc($os_result);
+            $row['size_pieces'] = floatval($os_row['pieces']);
+        }
+        $row['opening_stock'] = $opening_stock;
+        $inventory_data[] = $row;
+    }
 }
 
 $page_title = "Inventory Report";
@@ -320,6 +386,21 @@ $page_title = "Inventory Report";
             font-size: 12px;
         }
         
+        .size-label-badge {
+            background: #e3f2fd;
+            color: #0066cc;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        
+        .size-sub-row td {
+            background-color: #f8fbff;
+        }
+        
         /* Table Footer */
         .table-footer {
             background: linear-gradient(135deg, #f8f9fc, #eef2f7);
@@ -431,7 +512,7 @@ $page_title = "Inventory Report";
                         <div class="col-xl-3 col-md-6 mb-3">
                             <div class="stat-card border-left-success">
                                 <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Products</div>
-                                <div class="stat-number" style="color: #1e7e34;"><?php echo count($inventory_data); ?></div>
+                                <div class="stat-number" style="color: #1e7e34;"><?php echo $total_products; ?></div>
                             </div>
                         </div>
                         <div class="col-xl-3 col-md-6 mb-3">
@@ -569,22 +650,24 @@ $page_title = "Inventory Report";
             <thead>
                 <tr>
                     <th width="10%">PRODUCT CODE</th>
-                    <th width="18%">PRODUCT NAME</th>
-                    <th width="10%">CATEGORY</th>
-                    <th width="10%">COMPANY</th>
+                    <th width="15%">PRODUCT NAME</th>
+                    <th width="9%">SIZE</th>
+                    <th width="9%">CATEGORY</th>
+                    <th width="9%">COMPANY</th>
                     <th width="8%" class="text-right">OPENING</th>
                     <th width="8%" class="text-right">PURCHASED</th>
-                    <th width="8%" class="text-right">SOLD</th>
-                    <th width="8%" class="text-right">CURRENT</th>
-                    <th width="8%" class="text-right">UNIT PRICE</th>
-                    <th width="10%" class="text-right">STOCK VALUE</th>
-                    <th width="8%" class="text-center">STATUS</th>
+                    <th width="7%" class="text-right">SOLD</th>
+                    <th width="7%" class="text-right">CURRENT</th>
+                    <th width="7%" class="text-right">UNIT PRICE</th>
+                    <th width="8%" class="text-right">STOCK VALUE</th>
+                    <th width="7%" class="text-center">STATUS</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if(!empty($inventory_data)): ?>
-                    <?php foreach($inventory_data as $item): ?>
-                        <tr>
+                    <?php foreach($inventory_data as $index => $item): ?>
+                        <?php $is_size = $item['is_size_row']; ?>
+                        <tr<?php echo $is_size ? ' class="size-sub-row"' : ''; ?>>
                             <td>
                                 <span class="product-code"><?php echo htmlspecialchars($item['product_code']); ?></span>
                             </td>
@@ -592,20 +675,24 @@ $page_title = "Inventory Report";
                                 <div class="product-name"><?php echo htmlspecialchars($item['product_name']); ?></div>
                                 <small class="text-muted"><?php echo htmlspecialchars($item['unit_name']); ?></small>
                             </td>
+                            <td>
+                                <?php if($item['size_label']): ?>
+                                    <span class="size-label-badge"><?php echo htmlspecialchars($item['size_label']); ?></span>
+                                    <?php if($item['size_pieces'] !== null): ?>
+                                        <small class="text-muted d-block"><?php echo number_format($item['size_pieces'], 0); ?> pcs</small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo htmlspecialchars($item['category_name'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($item['company_name'] ?? 'N/A'); ?></td>
                             <td class="text-right"><?php echo number_format($item['opening_stock'], 2); ?></td>
                             <td class="text-right"><?php echo number_format($item['purchased_qty'], 2); ?></td>
                             <td class="text-right"><?php echo number_format($item['sold_qty'], 2); ?></td>
-                            <td class="text-right">
-                                <strong><?php echo number_format($item['current_stock'], 2); ?></strong>
-                            </td>
-                            <td class="text-right">
-                                <span class="amount-text">₨ <?php echo number_format($item['purchase_price'], 2); ?></span>
-                            </td>
-                            <td class="text-right">
-                                <span class="amount-text">₨ <?php echo number_format($item['stock_value'], 2); ?></span>
-                            </td>
+                            <td class="text-right"><strong><?php echo number_format($item['current_stock'], 2); ?></strong></td>
+                            <td class="text-right"><span class="amount-text">₨ <?php echo number_format($item['purchase_price'], 2); ?></span></td>
+                            <td class="text-right"><span class="amount-text">₨ <?php echo number_format($item['stock_value'], 2); ?></span></td>
                             <td class="text-center">
                                 <?php if($item['current_stock'] <= 0): ?>
                                     <span class="stock-out">
@@ -625,7 +712,7 @@ $page_title = "Inventory Report";
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="11" class="text-center py-5">
+                        <td colspan="12" class="text-center py-5">
                             <i class="fas fa-box-open fa-3x text-muted mb-3 d-block"></i>
                             <h5>No products found</h5>
                             <p class="text-muted">No inventory data available</p>
@@ -635,7 +722,7 @@ $page_title = "Inventory Report";
             </tbody>
             <tfoot>
                 <tr class="table-footer">
-                    <td colspan="9" class="text-right"><strong>TOTAL STOCK VALUE:</strong></td>
+                    <td colspan="10" class="text-right"><strong>TOTAL STOCK VALUE:</strong></td>
                     <td class="text-right">
                         <span class="total-value">
                             ₨ <?php echo number_format($total_stock_value, 2); ?>
@@ -668,7 +755,7 @@ $page_title = "Inventory Report";
         $(document).ready(function() {
             $('#inventoryTable').DataTable({
                 "pageLength": 25,
-                "order": [[7, 'desc']],
+                "order": [[8, 'desc']],
                 "language": {
                     "search": "🔍 Search:",
                     "lengthMenu": "Show _MENU_ entries",
@@ -677,7 +764,7 @@ $page_title = "Inventory Report";
                     "zeroRecords": "No matching products found"
                 },
                 "columnDefs": [
-                    { "orderable": false, "targets": [10] }
+                    { "orderable": false, "targets": [11] }
                 ]
             });
             
@@ -690,7 +777,9 @@ $page_title = "Inventory Report";
             ?>;
             
             if(topProducts.names.length > 0) {
-                var ctx1 = document.getElementById('topProductsChart').getContext('2d');
+                var chartEl1 = document.getElementById('topProductsChart');
+                if(chartEl1) {
+                var ctx1 = chartEl1.getContext('2d');
                 new Chart(ctx1, {
                     type: 'bar',
                     data: {
@@ -725,6 +814,7 @@ $page_title = "Inventory Report";
                         }
                     }
                 });
+                }
             }
             
             // Stock Status Chart
@@ -738,7 +828,9 @@ $page_title = "Inventory Report";
             var outCount = <?php echo $out_of_stock_count; ?>;
             
             if(normalCount > 0 || lowCount > 0 || outCount > 0) {
-                var ctx2 = document.getElementById('stockStatusChart').getContext('2d');
+                var chartEl2 = document.getElementById('stockStatusChart');
+                if(chartEl2) {
+                var ctx2 = chartEl2.getContext('2d');
                 new Chart(ctx2, {
                     type: 'doughnut',
                     data: {
@@ -760,6 +852,7 @@ $page_title = "Inventory Report";
                         }
                     }
                 });
+                }
             }
             
             // Export to Excel

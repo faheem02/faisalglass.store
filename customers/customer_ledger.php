@@ -277,6 +277,7 @@ $current_balance = floatval($customer['current_balance']);
                                                 case 'OPENING': $badge_class = 'badge-info'; $type_label = 'Opening'; break;
                                                 case 'SALE': $badge_class = 'badge-primary'; $type_label = 'Sale'; break;
                                                 case 'PAYMENT': $badge_class = 'badge-success'; $type_label = 'Payment'; break;
+                                                case 'QUOTATION': $badge_class = 'badge-secondary'; $type_label = 'Quotation'; break;
                                                 default: $badge_class = 'badge-secondary'; $type_label = $row['reference_type']; break;
                                             }
                                         ?>
@@ -291,6 +292,10 @@ $current_balance = floatval($customer['current_balance']);
                                                 <?php elseif($row['reference_type'] == 'PAYMENT'): ?>
                                                     <a href="receiving_amount.php?receipt_id=<?php echo $row['reference_id']; ?>" class="font-weight-bold">
                                                         RCP-<?php echo str_pad($row['reference_id'], 4, '0', STR_PAD_LEFT); ?>
+                                                    </a>
+                                                <?php elseif($row['reference_type'] == 'QUOTATION'): ?>
+                                                    <a href="../quotations/print_quotation.php?id=<?php echo $row['reference_id']; ?>" target="_blank" class="font-weight-bold">
+                                                        QTN-<?php echo str_pad($row['reference_id'], 4, '0', STR_PAD_LEFT); ?>
                                                     </a>
                                                 <?php else: ?>
                                                     -

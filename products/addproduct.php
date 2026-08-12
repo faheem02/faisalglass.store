@@ -38,10 +38,10 @@ if(isset($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
     
     // Check if product has sales or purchases
-    $check_sales = "SELECT id FROM sales_items WHERE product_id = $delete_id LIMIT 1";
+    $check_sales = "SELECT id FROM sale_details WHERE product_id = $delete_id LIMIT 1";
     $sales_result = mysqli_query($conn, $check_sales);
     
-    $check_purchases = "SELECT id FROM purchase_items WHERE product_id = $delete_id LIMIT 1";
+    $check_purchases = "SELECT id FROM purchase_details WHERE product_id = $delete_id LIMIT 1";
     $purchases_result = mysqli_query($conn, $check_purchases);
     
     if(mysqli_num_rows($sales_result) > 0 || mysqli_num_rows($purchases_result) > 0) {
@@ -51,6 +51,8 @@ if(isset($_GET['delete_id'])) {
         mysqli_query($conn, "DELETE FROM opening_stock WHERE product_id = $delete_id");
         // Delete inventory ledger records
         mysqli_query($conn, "DELETE FROM inventory_ledger WHERE product_id = $delete_id");
+        // Delete product sizes
+        mysqli_query($conn, "DELETE FROM product_sizes WHERE product_id = $delete_id");
         // Delete product
         $delete_query = "DELETE FROM products WHERE id = $delete_id";
         if(mysqli_query($conn, $delete_query)) {
@@ -73,13 +75,26 @@ function getCurrentStock($conn, $product_id) {
 }
 
 // Fetch all products with joins
-$products_query = "SELECT p.*, c.category_name, comp.company_name, u.unit_name, u.short_name 
+$products_query = "SELECT p.*, c.category_name, comp.company_name, u.unit_name, u.short_name, 
+                   (SELECT COUNT(*) FROM product_sizes ps WHERE ps.product_id = p.id) as size_count
                    FROM products p
                    LEFT JOIN categories c ON p.category_id = c.id
                    LEFT JOIN companies comp ON p.company_id = comp.id
                    LEFT JOIN units u ON p.unit_id = u.id
                    ORDER BY p.id DESC";
 $products_result = mysqli_query($conn, $products_query);
+
+// Fetch sizes for all products (for size-wise display)
+$sizes_map = [];
+$all_sizes_query = "SELECT ps.*, 
+                    (SELECT COALESCE(SUM(os.pieces), 0) FROM opening_stock os WHERE os.product_size_id = ps.id) as opening_pieces
+                    FROM product_sizes ps ORDER BY ps.product_id, ps.id ASC";
+$all_sizes_result = mysqli_query($conn, $all_sizes_query);
+if($all_sizes_result) {
+    while($sz = mysqli_fetch_assoc($all_sizes_result)) {
+        $sizes_map[$sz['product_id']][] = $sz;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -175,6 +190,28 @@ $products_result = mysqli_query($conn, $products_query);
             background-color: #1e7e34;
             color: white;
             font-weight: 600;
+        }
+        .size-badge {
+            margin: 2px 2px 2px 0;
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+        .child-size-table {
+            background: #f8f9fc;
+            width: 100%;
+            margin: 0;
+        }
+        .child-size-table th {
+            background: #e3f2fd;
+            color: #0d47a1;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .size-detail-card {
+            background: #f8f9fc;
+            border-left: 4px solid #1e7e34;
+            padding: 10px 15px;
+            border-radius: 6px;
         }
     </style>
 </head>
@@ -273,6 +310,7 @@ $products_result = mysqli_query($conn, $products_query);
                     <table class="table table-bordered" id="productsTable" width="100%" cellspacing="0">
                         <thead>
                             <tr>
+                                <th style="width:40px;"></th>
                                 <th>ID</th>
                                 <th>Product Code</th>
                                 <th>Product Name</th>
@@ -288,12 +326,13 @@ $products_result = mysqli_query($conn, $products_query);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php 
+                            <?php
                             $total_stock_value = 0;
                             while($product = mysqli_fetch_assoc($products_result)): 
                                 $current_stock = getCurrentStock($conn, $product['id']);
                                 $stock_value = $current_stock * $product['purchase_price'];
                                 $total_stock_value += $stock_value;
+                                $product_sizes = $sizes_map[$product['id']] ?? [];
                                 
                                 // Determine stock badge class
                                 if($current_stock <= 0) {
@@ -310,11 +349,27 @@ $products_result = mysqli_query($conn, $products_query);
                                     $stock_text = "High Stock";
                                 }
                             ?>
-                            <tr>
+                            <tr class="product-row">
+                                <td class="text-center">
+                                    <?php if(count($product_sizes) > 0): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-success expand-row" data-product-id="<?php echo $product['id']; ?>" title="View Sizes">
+                                            <i class="fas fa-chevron-down"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo $product['id']; ?></td>
                                 <td class="product-code"><?php echo $product['product_code']; ?></td>
                                 <td>
                                     <strong><?php echo htmlspecialchars($product['product_name']); ?></strong>
+                                    <?php if(count($product_sizes) > 0): ?>
+                                        <br>
+                                        <?php foreach($product_sizes as $sz): ?>
+                                            <span class="badge badge-success size-badge" title="Area: <?php echo number_format($sz['area_sqft'], 2); ?> sq ft | Opening: <?php echo number_format($sz['opening_pieces'], 2); ?> pcs">
+                                                <i class="fas fa-arrows-alt"></i> <?php echo htmlspecialchars($sz['size_label']); ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                        <br><small class="text-success"><i class="fas fa-boxes"></i> <?php echo count($product_sizes); ?> size(s)</small>
+                                    <?php endif; ?>
                                     <?php if($product['location_rack']): ?>
                                         <br><small class="text-muted"><i class="fas fa-map-marker-alt"></i> <?php echo $product['location_rack']; ?></small>
                                     <?php endif; ?>
@@ -358,6 +413,7 @@ $products_result = mysqli_query($conn, $products_query);
                         </tbody>
                         <tfoot>
                             <tr style="background: #f8f9fc; font-weight: bold;">
+                                <td></td>
                                 <td colspan="9" class="text-right"><strong>Total Stock Value:</strong></td>
                                 <td class="text-right"><strong><?php echo formatCurrency($total_stock_value); ?></strong></td>
                                 <td colspan="2"></td>
@@ -407,10 +463,27 @@ $products_result = mysqli_query($conn, $products_query);
 <script>
 var productsTable;
 
+// Sizes data per product (product_id -> array of sizes)
+var productSizesData = <?php
+$ps_json = [];
+foreach($sizes_map as $pid => $sizes) {
+    $ps_json[$pid] = array_map(function($s) {
+        return [
+            'size_label' => $s['size_label'],
+            'length_feet' => number_format($s['length_feet'], 2),
+            'width_feet' => number_format($s['width_feet'], 2),
+            'area_sqft' => number_format($s['area_sqft'], 2),
+            'opening_pieces' => number_format($s['opening_pieces'], 2)
+        ];
+    }, $sizes);
+}
+echo json_encode($ps_json);
+?>;
+
 $(document).ready(function() {
     // Initialize DataTable
     productsTable = $('#productsTable').DataTable({
-        "order": [[0, "desc"]],
+        "order": [[1, "desc"]],
         "pageLength": 25,
         "language": {
             "search": "Search:",
@@ -421,7 +494,7 @@ $(document).ready(function() {
             "zeroRecords": "No products found"
         },
         "drawCallback": function() {
-            $('#totalCount').text(productsTable.rows().count());
+            $('#totalCount').text(this.api().rows().count());
         }
     });
     
@@ -435,12 +508,12 @@ $(document).ready(function() {
     
     // Category filter
     $('#categoryFilter').on('change', function() {
-        productsTable.column(3).search(this.value).draw();
+        productsTable.column(4).search(this.value).draw();
     });
     
     // Company filter
     $('#companyFilter').on('change', function() {
-        productsTable.column(4).search(this.value).draw();
+        productsTable.column(5).search(this.value).draw();
     });
     
     // Stock filter (custom)
@@ -450,7 +523,7 @@ $(document).ready(function() {
         $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
             if(filter === '') return true;
             
-            var stockText = data[8]; // Current Stock column
+            var stockText = data[9]; // Current Stock column
             var stockMatch = stockText.match(/([\d,\.]+)/);
             var stockValue = stockMatch ? parseFloat(stockMatch[1].replace(/,/g, '')) : 0;
             
@@ -464,7 +537,47 @@ $(document).ready(function() {
         productsTable.draw();
         $.fn.dataTable.ext.search.pop();
     });
+    
+    // Expand/collapse sizes child row
+    $(document).on('click', '.expand-row', function() {
+        var btn = $(this);
+        var productId = btn.data('product-id');
+        var tr = btn.closest('tr');
+        var row = productsTable.row(tr);
+        
+        if(row.child.isShown()) {
+            row.child.hide();
+            btn.html('<i class="fas fa-chevron-down"></i>');
+        } else {
+            row.child(renderSizeDetail(productId)).show();
+            btn.html('<i class="fas fa-chevron-up"></i>');
+        }
+    });
 });
+
+// Render child row with size details
+function renderSizeDetail(productId) {
+    var sizes = productSizesData[productId] || [];
+    if(sizes.length === 0) return '<div class="size-detail-card"><em>No sizes found for this product.</em></div>';
+    
+    var html = '<div class="size-detail-card">';
+    html += '<h6 class="text-success font-weight-bold"><i class="fas fa-arrows-alt"></i> Product Sizes</h6>';
+    html += '<div class="table-responsive">';
+    html += '<table class="table table-bordered table-sm child-size-table">';
+    html += '<thead><tr><th>Size</th><th>Length (Feet)</th><th>Width (Feet)</th><th>Area (sq ft)</th><th>Opening Pieces</th></tr></thead>';
+    html += '<tbody>';
+    $.each(sizes, function(i, sz) {
+        html += '<tr>';
+        html += '<td><strong>' + sz.size_label + '</strong></td>';
+        html += '<td class="text-right">' + sz.length_feet + '</td>';
+        html += '<td class="text-right">' + sz.width_feet + '</td>';
+        html += '<td class="text-right">' + sz.area_sqft + '</td>';
+        html += '<td class="text-right">' + sz.opening_pieces + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+    return html;
+}
 
 // View Product Details
 function viewProduct(id) {

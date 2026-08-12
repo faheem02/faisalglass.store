@@ -17,6 +17,138 @@ $page_title = "Add Quotation";
 $success_msg = '';
 $error_msg = '';
 
+// Handle Hold Quotation AJAX requests (mirror of sales hold bills: parked only, no stock/ledger)
+if(isset($_GET['action'])) {
+
+    // Save Hold Quotation
+    if($_GET['action'] == 'save_hold' && $_SERVER['REQUEST_METHOD'] == 'POST') {
+        $raw = file_get_contents('php://input');
+        $json = json_decode($raw, true);
+        $data = is_array($json) ? $json : $_POST;
+        $hold_date = mysqli_real_escape_string($conn, $data['quotation_date'] ?? date('Y-m-d'));
+        $customer_id = intval($data['customer_id'] ?? 0);
+        $subtotal = floatval($data['subtotal'] ?? 0);
+        $discount_percentage = floatval($data['discount_percentage'] ?? 0);
+        $discount_amount = floatval($data['discount_amount'] ?? 0);
+        $other_charges = floatval($data['other_charges'] ?? 0);
+        $grand_total = floatval($data['grand_total'] ?? 0);
+        $valid_until = !empty($data['valid_until']) ? "'" . mysqli_real_escape_string($conn, $data['valid_until']) . "'" : "NULL";
+        $reference_no = mysqli_real_escape_string($conn, $data['reference_no'] ?? '');
+        $remarks = mysqli_real_escape_string($conn, $data['remarks'] ?? '');
+        $products = $data['products'] ?? [];
+        $created_by = $_SESSION['user_id'];
+
+        if(empty($products)) {
+            echo json_encode(['success' => false, 'message' => 'No products to hold']);
+            exit;
+        }
+
+        // Generate Hold No
+        $result = mysqli_query($conn, "SELECT MAX(CAST(SUBSTRING(hold_no, 7) AS UNSIGNED)) as last_num FROM hold_quotations_master");
+        $row = mysqli_fetch_assoc($result);
+        $next_num = str_pad((intval($row['last_num']) + 1), 5, '0', STR_PAD_LEFT);
+        $hold_no = "HOLDQ-" . $next_num;
+
+        mysqli_begin_transaction($conn);
+        try {
+            $insert_master = "INSERT INTO hold_quotations_master (hold_no, hold_date, customer_id, valid_until, reference_no, subtotal, discount_percentage, discount_amount, other_charges, grand_total, remarks, status, created_by) VALUES ('$hold_no', '$hold_date', $customer_id, $valid_until, '$reference_no', $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, '$remarks', 'hold', $created_by)";
+            if(!mysqli_query($conn, $insert_master)) {
+                throw new Exception("Failed to save hold quotation: " . mysqli_error($conn));
+            }
+            $hold_id = mysqli_insert_id($conn);
+            foreach($products as $prod) {
+                $p_product_id = intval($prod['product_id'] ?? 0);
+                $p_client_height = floatval($prod['client_height'] ?? 0);
+                $p_client_width = floatval($prod['client_width'] ?? 0);
+                $p_std_height = mysqli_real_escape_string($conn, strval($prod['std_height'] ?? ''));
+                $p_std_width = mysqli_real_escape_string($conn, strval($prod['std_width'] ?? ''));
+                $p_uom = mysqli_real_escape_string($conn, strval($prod['uom'] ?? 'Inch'));
+                $p_quantity = floatval($prod['quantity'] ?? 0);
+                $p_unit_price = floatval($prod['unit_price'] ?? 0);
+                $p_area = floatval($prod['area'] ?? 0);
+                $p_amount = floatval($prod['amount'] ?? 0);
+                $p_discount_percentage = floatval($prod['discount_percentage'] ?? 0);
+                $p_discount_amount = floatval($prod['discount_amount'] ?? 0);
+                $p_net_amount = floatval($prod['net_amount'] ?? 0);
+                $insert_detail = "INSERT INTO hold_quotations_details (hold_id, product_id, client_height, client_width, std_height, std_width, uom, quantity, unit_price, area, amount, discount_percentage, discount_amount, net_amount) VALUES ($hold_id, $p_product_id, $p_client_height, $p_client_width, '$p_std_height', '$p_std_width', '$p_uom', $p_quantity, $p_unit_price, $p_area, $p_amount, $p_discount_percentage, $p_discount_amount, $p_net_amount)";
+                if(!mysqli_query($conn, $insert_detail)) {
+                    throw new Exception("Failed to save hold product details: " . mysqli_error($conn));
+                }
+            }
+            mysqli_commit($conn);
+            $response = ['success' => true, 'message' => 'Hold Quotation saved', 'hold_no' => $hold_no];
+        } catch(Throwable $e) {
+            mysqli_rollback($conn);
+            $response = ['success' => false, 'message' => $e->getMessage()];
+        }
+        echo json_encode($response);
+        exit;
+    }
+
+    // Get list of Hold Quotations
+    if($_GET['action'] == 'get_hold_quotations') {
+        $sql = "SELECT h.id, h.hold_no, h.hold_date, COALESCE(c.customer_name, 'Walk-In') as customer_name, h.grand_total 
+                FROM hold_quotations_master h 
+                LEFT JOIN customers c ON h.customer_id = c.id 
+                WHERE h.status = 'hold' 
+                ORDER BY h.hold_date DESC";
+        $result = mysqli_query($conn, $sql);
+        $holds = [];
+        while($row = mysqli_fetch_assoc($result)) {
+            $holds[] = $row;
+        }
+        echo json_encode(['success' => true, 'data' => $holds]);
+        exit;
+    }
+
+    // Load single Hold Quotation (only status = 'hold' can be loaded back)
+    if($_GET['action'] == 'load_hold' && isset($_GET['id'])) {
+        $hold_id = intval($_GET['id']);
+        $master_res = mysqli_query($conn, "SELECT * FROM hold_quotations_master WHERE id = $hold_id AND status = 'hold'");
+        $master = $master_res ? mysqli_fetch_assoc($master_res) : null;
+        if(!$master) {
+            echo json_encode(['success' => false, 'message' => 'Hold Quotation not found (may already be converted or deleted)']);
+            exit;
+        }
+        $details = mysqli_query($conn, "SELECT * FROM hold_quotations_details WHERE hold_id = $hold_id");
+        $products = [];
+        while($det = mysqli_fetch_assoc($details)) {
+            $det['area_per_unit'] = floatval($det['area']);
+            $products[] = $det;
+        }
+        echo json_encode([
+            'success' => true,
+            'hold_id' => $master['id'],
+            'customer_id' => $master['customer_id'],
+            'quotation_date' => $master['hold_date'],
+            'valid_until' => $master['valid_until'],
+            'reference_no' => $master['reference_no'],
+            'subtotal' => $master['subtotal'],
+            'discount_percentage' => $master['discount_percentage'],
+            'discount_amount' => $master['discount_amount'],
+            'other_charges' => $master['other_charges'],
+            'grand_total' => $master['grand_total'],
+            'remarks' => $master['remarks'],
+            'products' => $products
+        ]);
+        exit;
+    }
+
+    // Delete Hold Quotation (only if status = 'hold')
+    if($_GET['action'] == 'delete_hold' && isset($_GET['id'])) {
+        $hold_id = intval($_GET['id']);
+        $check = mysqli_fetch_assoc(mysqli_query($conn, "SELECT status FROM hold_quotations_master WHERE id = $hold_id"));
+        if(!$check || $check['status'] !== 'hold') {
+            echo json_encode(['success' => false, 'message' => 'Only Hold quotations can be deleted']);
+            exit;
+        }
+        mysqli_query($conn, "DELETE FROM hold_quotations_details WHERE hold_id = $hold_id");
+        mysqli_query($conn, "DELETE FROM hold_quotations_master WHERE id = $hold_id");
+        echo json_encode(['success' => true, 'message' => 'Hold Quotation deleted']);
+        exit;
+    }
+}
+
 // Generate Quotation Number
 function generateQuotationNo($conn) {
     $prefix = "QTN";
@@ -46,6 +178,39 @@ $products_query = "SELECT p.*, c.category_name, u.short_name as unit_name, u.id 
                    WHERE p.status = 1 
                    ORDER BY p.product_name";
 $products_result = mysqli_query($conn, $products_query);
+
+// Load a Hold Quotation directly via ?load_hold_id=N (used by modal "Load" button)
+$hold_load_id = isset($_GET['load_hold_id']) ? intval($_GET['load_hold_id']) : 0;
+$hold_load_data = null;
+if ($hold_load_id > 0) {
+    $page_title = "Add Quotation (Loading Hold Quotation)";
+    $hold_res = mysqli_query($conn, "SELECT * FROM hold_quotations_master WHERE id = $hold_load_id AND status = 'hold'");
+    if ($hold_res && mysqli_num_rows($hold_res) > 0) {
+        $hold_master = mysqli_fetch_assoc($hold_res);
+        $hold_details_res = mysqli_query($conn, "SELECT * FROM hold_quotations_details WHERE hold_id = $hold_load_id");
+        $hold_products = [];
+        if ($hold_details_res) {
+            while ($hd = mysqli_fetch_assoc($hold_details_res)) {
+                $hd['area_per_unit'] = floatval($hd['area']);
+                $hold_products[] = $hd;
+            }
+        }
+        $hold_load_data = [
+            'hold_id' => $hold_master['id'],
+            'customer_id' => $hold_master['customer_id'],
+            'quotation_date' => $hold_master['hold_date'],
+            'valid_until' => $hold_master['valid_until'],
+            'reference_no' => $hold_master['reference_no'],
+            'subtotal' => $hold_master['subtotal'],
+            'discount_percentage' => $hold_master['discount_percentage'],
+            'discount_amount' => $hold_master['discount_amount'],
+            'other_charges' => $hold_master['other_charges'],
+            'grand_total' => $hold_master['grand_total'],
+            'remarks' => $hold_master['remarks'],
+            'products' => $hold_products
+        ];
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -313,8 +478,11 @@ $products_result = mysqli_query($conn, $products_query);
                                 <div class="col-md-12 text-right">
                                     <button type="button" class="btn btn-secondary" id="refreshBtn"><i class="fas fa-sync-alt mr-1"></i> Reset</button>
                                     <a href="view_quotation.php" class="btn btn-info"><i class="fas fa-list mr-1"></i> View Quotations</a>
-                                    <!-- NEW: Hold Quotation Button -->
+                                    <!-- Hold Quotation Button (parks the bill, no stock/ledger) -->
                                     <button type="button" id="holdQuotationBtn" class="btn btn-hold"><i class="fas fa-pause-circle mr-1"></i> Hold Quotation</button>
+                                    <button type="button" class="btn btn-info" id="loadHoldQuotationBtn" data-toggle="modal" data-target="#holdQuotationsModal">
+                                        <i class="fas fa-folder-open mr-1"></i> Load Hold Quotation
+                                    </button>
                                     <button type="button" id="saveQuotationBtn" class="btn btn-green"><i class="fas fa-save mr-1"></i> Save Quotation</button>
                                 </div>
                             </div>
@@ -324,6 +492,7 @@ $products_result = mysqli_query($conn, $products_query);
                     <input type="hidden" name="subtotal" id="subtotal_input" value="0">
                     <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     <input type="hidden" name="grand_total" id="grand_total_input" value="0">
+                    <input type="hidden" name="hold_id" id="hold_id" value="">
                 </form>
                 
             </div>
@@ -332,6 +501,34 @@ $products_result = mysqli_query($conn, $products_query);
         <footer class="sticky-footer bg-white">
             <div class="container my-auto"><div class="copyright text-center my-auto"><span>&copy; <?php echo date('Y'); ?> <?php echo $software_name; ?> - All Rights Reserved</span></div></div>
         </footer>
+    </div>
+</div>
+
+<!-- Load Hold Quotations Modal -->
+<div class="modal fade" id="holdQuotationsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-folder-open"></i> Load Hold Quotation</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="holdQuotationsTable" width="100%">
+                        <thead>
+                            <tr>
+                                <th>Hold No</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Amount (₨)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -368,6 +565,9 @@ $products_result = mysqli_query($conn, $products_query);
 
 <script>
 let productCount = 1;
+
+// Hold quotation data passed via ?load_hold_id=N (from modal "Load" button)
+const holdLoadData = <?php echo json_encode($hold_load_data); ?>;
 
 function calculateArea(height, width) {
     if (height > 0 && width > 0) {
@@ -586,13 +786,208 @@ $(document).ready(function() {
         submitQuotation('Save Quotation');
     });
     
-    // --- HOLD QUOTATION (hold) ---
+    // --- HOLD QUOTATION (parked bill, no stock/ledger) ---
     $('#holdQuotationBtn').on('click', function(e) {
         e.preventDefault();
-        // Set status to hold
-        $('#quotation_status').val('hold');
-        submitQuotation('Hold Quotation');
+        holdQuotation();
     });
+    
+    // --- LOAD HOLD QUOTATION ---
+    $('#loadHoldQuotationBtn').on('click', function() {
+        loadHoldQuotationsList();
+    });
+    
+    function loadHoldQuotationsList() {
+        $.getJSON('add_quotation.php?action=get_hold_quotations', function(res) {
+            if(res.success) {
+                let tbody = $('#holdQuotationsTable tbody');
+                tbody.empty();
+                if(res.data.length === 0) {
+                    tbody.append('<tr><td colspan="5" class="text-center">No hold quotations found</td></tr>');
+                }
+                $.each(res.data, function(i, bill) {
+                    let row = `<tr>
+                        <td><strong>${bill.hold_no}</strong></td>
+                        <td>${bill.hold_date}</td>
+                        <td>${bill.customer_name}</td>
+                        <td>₨ ${parseFloat(bill.grand_total).toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success load-hold" data-id="${bill.id}"><i class="fas fa-download"></i> Load</button>
+                            <button class="btn btn-sm btn-danger delete-hold" data-id="${bill.id}"><i class="fas fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>`;
+                    tbody.append(row);
+                });
+                $('#holdQuotationsModal').modal('show');
+            } else {
+                Swal.fire('Error', 'Failed to load hold quotations', 'error');
+            }
+        });
+    }
+    
+    // Populate the quotation form from a hold payload (shared by modal load + ?load_hold_id)
+    function populateQuotationForm(res) {
+        $('#hold_id').remove();
+        $('<input>').attr({ type: 'hidden', id: 'hold_id', name: 'hold_id', value: res.hold_id }).appendTo('#quotationForm');
+        
+        if(res.customer_id) $('#customer_id').val(res.customer_id).trigger('change');
+        if(res.quotation_date) $('input[name="quotation_date"]').val(res.quotation_date);
+        if(res.valid_until) $('input[name="valid_until"]').val(res.valid_until);
+        if(res.reference_no) $('input[name="reference_no"]').val(res.reference_no);
+        if(res.remarks) $('textarea[name="remarks"]').val(res.remarks);
+        $('#global_discount').val(parseFloat(res.discount_percentage) || 0);
+        $('#other_charges').val(parseFloat(res.other_charges) || 0);
+        
+        // Rebuild product rows from hold details
+        $('#productsBody').empty();
+        productCount = 0;
+        
+        if(res.products && res.products.length > 0) {
+            $.each(res.products, function(i, item) {
+                addProductRow();
+                populateQuotationRow(i, item);
+            });
+        }
+        
+        calculateTotals();
+    }
+    
+    function populateQuotationRow(r, item) {
+        const productId = parseInt(item.product_id) || 0;
+        const clientH = parseFloat(item.client_height) || 0;
+        const clientW = parseFloat(item.client_width) || 0;
+        const stdH = item.std_height !== null && item.std_height !== '' ? parseFloat(item.std_height) || 0 : 0;
+        const stdW = item.std_width !== null && item.std_width !== '' ? parseFloat(item.std_width) || 0 : 0;
+        const qty = parseFloat(item.quantity) || 0;
+        const unitPrice = parseFloat(item.unit_price) || 0;
+        const area = parseFloat(item.area_per_unit) || parseFloat(item.area) || 0;
+        const discountPercent = parseFloat(item.discount_percentage) || 0;
+        
+        // Set product first (its change handler loads the default price, we override after)
+        $(`.product-select[data-row="${r}"]`).val(productId).trigger('change');
+        
+        $(`.client-height[data-row="${r}"]`).val(clientH);
+        $(`.client-width[data-row="${r}"]`).val(clientW);
+        $(`.std-height[data-row="${r}"]`).val(stdH);
+        $(`.std-width[data-row="${r}"]`).val(stdW);
+        $(`.quantity[data-row="${r}"]`).val(qty);
+        $(`.unit-price[data-row="${r}"]`).val(unitPrice);
+        $(`.area[data-row="${r}"]`).val(area.toFixed(2));
+        $(`.discount-percent[data-row="${r}"]`).val(discountPercent);
+        
+        calculateRowAmount(r);
+        calculateTotals();
+    }
+    
+    function holdQuotation() {
+        var customer = $('#customer_id').val();
+        var hasProduct = false;
+        $('select[name="product_id[]"]').each(function() { if($(this).val() !== '') hasProduct = true; });
+        
+        if(!customer) {
+            Swal.fire({ title: 'Error!', text: 'Please select a customer!', icon: 'error' });
+            return false;
+        }
+        if(!hasProduct) {
+            Swal.fire({ title: 'Error!', text: 'Please add at least one product!', icon: 'error' });
+            return false;
+        }
+        
+        var products = [];
+        $('select[name="product_id[]"]').each(function() {
+            var r = $(this).data('row');
+            var pid = parseInt($(this).val()) || 0;
+            if(pid) {
+                var amount = parseFloat($(`.row-amount[data-row="${r}"]`).val()) || 0;
+                var netAmount = parseFloat($(`.net-amount[data-row="${r}"]`).val()) || 0;
+                products.push({
+                    product_id: pid,
+                    client_height: parseFloat($(`.client-height[data-row="${r}"]`).val()) || 0,
+                    client_width: parseFloat($(`.client-width[data-row="${r}"]`).val()) || 0,
+                    std_height: $(`.std-height[data-row="${r}"]`).val() || '',
+                    std_width: $(`.std-width[data-row="${r}"]`).val() || '',
+                    uom: 'Inch',
+                    quantity: parseFloat($(`.quantity[data-row="${r}"]`).val()) || 0,
+                    unit_price: parseFloat($(`.unit-price[data-row="${r}"]`).val()) || 0,
+                    area: parseFloat($(`.area[data-row="${r}"]`).val()) || 0,
+                    amount: amount,
+                    discount_percentage: parseFloat($(`.discount-percent[data-row="${r}"]`).val()) || 0,
+                    discount_amount: amount - netAmount,
+                    net_amount: netAmount
+                });
+            }
+        });
+        
+        var holdData = {
+            customer_id: customer,
+            quotation_date: $('input[name="quotation_date"]').val(),
+            valid_until: $('input[name="valid_until"]').val(),
+            reference_no: $('input[name="reference_no"]').val(),
+            remarks: $('textarea[name="remarks"]').val() || '',
+            subtotal: parseFloat($('#subtotal_input').val()) || 0,
+            discount_percentage: parseFloat($('#global_discount').val()) || 0,
+            discount_amount: parseFloat($('#discount_amount_input').val()) || 0,
+            other_charges: parseFloat($('#other_charges').val()) || 0,
+            grand_total: parseFloat($('#grand_total_input').val()) || 0,
+            products: products
+        };
+        
+        Swal.fire({ title: 'Saving Hold Quotation...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        $.ajax({
+            url: 'add_quotation.php?action=save_hold',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(holdData),
+            dataType: 'json',
+            success: function(res) {
+                if(res.success) {
+                    Swal.fire('Hold Quotation Saved', `Number: ${res.hold_no}`, 'info');
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function() {
+                Swal.fire('Error', 'Network error while saving hold quotation', 'error');
+            }
+        });
+    }
+    
+    // Load a specific hold quotation into the form
+    $(document).on('click', '.load-hold', function() {
+        let id = $(this).data('id');
+        $.getJSON(`add_quotation.php?action=load_hold&id=${id}`, function(res) {
+            if(res.success) {
+                populateQuotationForm(res);
+                $('#holdQuotationsModal').modal('hide');
+                Swal.fire('Loaded', 'Hold quotation loaded. You can modify and then Save Quotation.', 'success');
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        });
+    });
+    
+    // Delete a hold quotation
+    $(document).on('click', '.delete-hold', function() {
+        let id = $(this).data('id');
+        Swal.fire({ title: 'Confirm Delete', text: 'This hold quotation will be permanently deleted.', icon: 'warning', showCancelButton: true }).then((res) => {
+            if(res.isConfirmed) {
+                $.getJSON(`add_quotation.php?action=delete_hold&id=${id}`, function(response) {
+                    if(response.success) {
+                        Swal.fire('Deleted', '', 'success');
+                        loadHoldQuotationsList();
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                    }
+                });
+            }
+        });
+    });
+    
+    // Auto-load hold quotation passed via ?load_hold_id=N
+    if(holdLoadData) {
+        populateQuotationForm(holdLoadData);
+    }
     
     function submitQuotation(actionLabel) {
         var customer = $('#customer_id').val();

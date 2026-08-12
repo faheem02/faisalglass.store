@@ -45,6 +45,16 @@ if(isset($_GET['id'])) {
         $opening_result = mysqli_query($conn, $opening_query);
         $opening_stock = mysqli_fetch_assoc($opening_result);
         
+        // Get sizes for this product
+        $sizes_query = "SELECT ps.*, 
+                        (SELECT COALESCE(SUM(os.pieces), 0) FROM opening_stock os WHERE os.product_size_id = ps.id) as opening_pieces
+                        FROM product_sizes ps WHERE ps.product_id = $product_id ORDER BY ps.id ASC";
+        $sizes_result = mysqli_query($conn, $sizes_query);
+        $sizes = [];
+        while($sz = mysqli_fetch_assoc($sizes_result)) {
+            $sizes[] = $sz;
+        }
+        
         ?>
         <div class="row">
             <div class="col-md-6">
@@ -117,6 +127,38 @@ if(isset($_GET['id'])) {
                     Added on <?php echo date('d-m-Y', strtotime($opening_stock['date'])); ?> | 
                     Quantity: <?php echo number_format($opening_stock['quantity'], 2); ?> | 
                     Amount: <?php echo formatCurrency($opening_stock['total_amount']); ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <?php if(count($sizes) > 0): ?>
+        <div class="row">
+            <div class="col-md-12">
+                <h6 class="text-success font-weight-bold"><i class="fas fa-arrows-alt"></i> Product Sizes</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>Size</th>
+                                <th>Length (Feet)</th>
+                                <th>Width (Feet)</th>
+                                <th>Area (sq ft)</th>
+                                <th>Opening Pieces</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($sizes as $sz): ?>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($sz['size_label']); ?></strong></td>
+                                <td class="text-right"><?php echo number_format($sz['length_feet'], 2); ?></td>
+                                <td class="text-right"><?php echo number_format($sz['width_feet'], 2); ?></td>
+                                <td class="text-right"><?php echo number_format($sz['area_sqft'], 2); ?></td>
+                                <td class="text-right"><?php echo number_format($sz['opening_pieces'], 2); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -66,6 +66,16 @@ $companies_result = mysqli_query($conn, $companies_query);
 $units_query = "SELECT id, unit_name, short_name FROM units ORDER BY unit_name";
 $units_result = mysqli_query($conn, $units_query);
 
+// Fetch sizes for this product
+$product_sizes = [];
+$sizes_query = "SELECT ps.*, 
+                (SELECT COALESCE(SUM(os.pieces), 0) FROM opening_stock os WHERE os.product_size_id = ps.id) as opening_pieces
+                FROM product_sizes ps WHERE ps.product_id = $product_id ORDER BY ps.id ASC";
+$sizes_result = mysqli_query($conn, $sizes_query);
+while($sz = mysqli_fetch_assoc($sizes_result)) {
+    $product_sizes[] = $sz;
+}
+
 // Handle Update Product
 if(isset($_POST['update_product'])) {
     $product_name = mysqli_real_escape_string($conn, trim($_POST['product_name']));
@@ -131,8 +141,9 @@ if(isset($_POST['update_product'])) {
     }
 }
 
-// Handle Add Opening Stock (Additional Stock)
+// Handle Add Opening Stock (Additional Stock) - per size or product level
 if(isset($_POST['add_stock'])) {
+    $stock_size_id = intval($_POST['stock_size_id'] ?? 0);
     $additional_qty = floatval($_POST['additional_qty']);
     $stock_purchase_price = floatval($_POST['stock_purchase_price']);
     $stock_remarks = mysqli_real_escape_string($conn, trim($_POST['stock_remarks']));
@@ -142,34 +153,114 @@ if(isset($_POST['add_stock'])) {
     } elseif($stock_purchase_price <= 0) {
         $error_msg = "Purchase price must be greater than 0!";
     } else {
+        // If a size is selected, quantity = pieces; total area = pieces x size area
         $total_amount = $additional_qty * $stock_purchase_price;
-        $current_date = date('Y-m-d');
-        $new_balance = $current_stock + $additional_qty;
-        
-        // Insert into opening_stock (as additional stock)
-        $insert_opening = "INSERT INTO opening_stock (product_id, quantity, unit_price, total_amount, date, remarks, created_by) 
-                          VALUES ('$product_id', '$additional_qty', '$stock_purchase_price', '$total_amount', 
-                          '$current_date', '$stock_remarks', '{$_SESSION['user_id']}')";
-        
-        if(mysqli_query($conn, $insert_opening)) {
-            // Insert into inventory_ledger
-            $insert_ledger = "INSERT INTO inventory_ledger (date, product_id, reference_type, reference_id, 
-                              qty_in, qty_out, balance_qty, unit_price, total_amount, remarks) 
-                              VALUES ('$current_date', '$product_id', 'ADJUSTMENT', '$product_id', 
-                              '$additional_qty', 0, '$new_balance', '$stock_purchase_price', '$total_amount', 
-                              'Additional Stock Added: $stock_remarks')";
-            
-            if(mysqli_query($conn, $insert_ledger)) {
-                $success_msg = "Stock added successfully! New stock quantity: " . number_format($new_balance, 2);
-                $current_stock = $new_balance;
-                
-                // Refresh page to show updated stock
-                echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
+        $size_id_sql = "NULL";
+        $size_label = "";
+        if($stock_size_id > 0) {
+            $size_check = mysqli_query($conn, "SELECT * FROM product_sizes WHERE id = $stock_size_id AND product_id = $product_id");
+            $size_row = mysqli_fetch_assoc($size_check);
+            if(!$size_row) {
+                $error_msg = "Invalid size selected!";
             } else {
-                $error_msg = "Failed to update inventory ledger!";
+                $size_id_sql = $stock_size_id;
+                $size_label = $size_row['size_label'];
+                $total_area = $size_row['area_sqft'] * $additional_qty;
+                $total_amount = $total_area * $stock_purchase_price;
             }
+        }
+        
+        if(empty($error_msg)) {
+            $current_date = date('Y-m-d');
+            $new_balance = $current_stock + ($stock_size_id > 0 ? $total_area : $additional_qty);
+            
+            $remarks_text = ($stock_size_id > 0 ? "Additional Stock - Size: $size_label, " : "Additional Stock: ")
+                          . ($stock_size_id > 0 ? "$additional_qty pieces, total $total_area sq ft" : "$additional_qty sq ft")
+                          . ($stock_remarks ? " | $stock_remarks" : "");
+            $pieces_val = $stock_size_id > 0 ? floatval($additional_qty) : 0;
+            $qty_val = $stock_size_id > 0 ? $total_area : $additional_qty;
+            
+            // Insert into opening_stock (as additional stock)
+            $insert_opening = "INSERT INTO opening_stock (product_id, product_size_id, quantity, pieces, unit_price, total_amount, date, remarks, created_by) 
+                              VALUES ('$product_id', $size_id_sql, '$qty_val', '$pieces_val', '$stock_purchase_price', '$total_amount', 
+                              '$current_date', '" . mysqli_real_escape_string($conn, $remarks_text) . "', '{$_SESSION['user_id']}')";
+            
+            if(mysqli_query($conn, $insert_opening)) {
+                // Insert into inventory_ledger
+                $insert_ledger = "INSERT INTO inventory_ledger (date, product_id, reference_type, reference_id, 
+                                  qty_in, qty_out, balance_qty, unit_price, total_amount, remarks) 
+                                  VALUES ('$current_date', '$product_id', 'ADJUSTMENT', '$product_id', 
+                                  '$qty_val', 0, '$new_balance', '$stock_purchase_price', '$total_amount', 
+                                  '" . mysqli_real_escape_string($conn, $remarks_text) . "')";
+                
+                if(mysqli_query($conn, $insert_ledger)) {
+                    $success_msg = "Stock added successfully! New stock quantity: " . number_format($new_balance, 2) . " sq ft";
+                    $current_stock = $new_balance;
+                    
+                    // Refresh page to show updated stock
+                    echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
+                } else {
+                    $error_msg = "Failed to update inventory ledger!";
+                }
+            } else {
+                $error_msg = "Failed to add stock!";
+            }
+        }
+    }
+}
+
+// Handle Add New Size (with optional opening stock)
+if(isset($_POST['add_size'])) {
+    $size_length_feet = floatval($_POST['size_length_feet']);
+    $size_width_feet = floatval($_POST['size_width_feet']);
+    $size_opening_qty = floatval($_POST['size_opening_qty']);
+    $size_purchase_price = floatval($_POST['size_purchase_price']);
+    $size_sale_rate = floatval($_POST['size_sale_rate'] ?? 0);
+    if($size_sale_rate <= 0) $size_sale_rate = floatval($product['sale_price']);
+    
+    if($size_length_feet <= 0 || $size_width_feet <= 0) {
+        $error_msg = "Length and width must be greater than 0!";
+    } elseif($size_opening_qty < 0) {
+        $error_msg = "Opening quantity cannot be negative!";
+    } else {
+        $length_inch = $size_length_feet * 12;
+        $width_inch = $size_width_feet * 12;
+        $area_sqft = $size_length_feet * $size_width_feet;
+        $size_label = trim(rtrim(rtrim(number_format($size_length_feet, 2, '.', ''), '0'), '.')) . ' x ' .
+                      trim(rtrim(rtrim(number_format($size_width_feet, 2, '.', ''), '0'), '.')) . ' ft';
+        
+        $insert_size = "INSERT INTO product_sizes (product_id, size_label, length_inch, width_inch, length_feet, width_feet, area_sqft, purchase_rate, sale_rate) 
+                        VALUES ('$product_id', '" . mysqli_real_escape_string($conn, $size_label) . "', '$length_inch', '$width_inch', 
+                        '$size_length_feet', '$size_width_feet', '$area_sqft', '$size_purchase_price', '$size_sale_rate')";
+        
+        if(mysqli_query($conn, $insert_size)) {
+            $size_id = mysqli_insert_id($conn);
+            
+            if($size_opening_qty > 0) {
+                $total_area = $area_sqft * $size_opening_qty;
+                $total_amount = $total_area * $size_purchase_price;
+                $current_date = date('Y-m-d');
+                $new_balance = $current_stock + $total_area;
+                $remarks_text = "Opening Stock: $size_opening_qty pieces of $size_label, total $total_area sq ft";
+                
+                $insert_opening = "INSERT INTO opening_stock (product_id, product_size_id, quantity, pieces, unit_price, total_amount, date, remarks, created_by) 
+                                   VALUES ('$product_id', '$size_id', '$total_area', '$size_opening_qty', '$size_purchase_price', '$total_amount', 
+                                   '$current_date', '" . mysqli_real_escape_string($conn, $remarks_text) . "', '{$_SESSION['user_id']}')";
+                mysqli_query($conn, $insert_opening);
+                
+                $insert_ledger = "INSERT INTO inventory_ledger (date, product_id, reference_type, reference_id, 
+                                   qty_in, qty_out, balance_qty, unit_price, total_amount, remarks) 
+                                   VALUES ('$current_date', '$product_id', 'OPENING', '$product_id', 
+                                   '$total_area', 0, '$new_balance', '$size_purchase_price', '$total_amount', 
+                                   'Opening Stock Entry - $remarks_text')";
+                mysqli_query($conn, $insert_ledger);
+                $current_stock = $new_balance;
+            }
+            
+            $success_msg = "New size added successfully!" . ($size_opening_qty > 0 ? " Opening stock: " . number_format($current_stock, 2) . " sq ft" : "");
+            echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
         } else {
-            $error_msg = "Failed to add stock!";
+            $error_msg = "Failed to add size: " . mysqli_error($conn);
         }
     }
 }
@@ -457,14 +548,27 @@ if(isset($_POST['add_stock'])) {
             <div class="card-body">
                 <form method="POST" action="" id="stockForm">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
-                                <label class="required-field"><i class="fas fa-boxes text-success mr-1"></i> Quantity to Add</label>
-                                <input type="number" step="0.01" name="additional_qty" class="form-control" 
-                                       placeholder="Enter quantity" required>
+                                <label><i class="fas fa-arrows-alt text-success mr-1"></i> Size (Optional)</label>
+                                <select name="stock_size_id" id="stock_size_id" class="form-control">
+                                    <option value="0">Product Level (area)</option>
+                                    <?php foreach($product_sizes as $sz): ?>
+                                        <option value="<?php echo $sz['id']; ?>"><?php echo htmlspecialchars($sz['size_label']); ?> (<?php echo number_format($sz['area_sqft'], 2); ?> sq ft)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="text-muted">Select a size to add stock in pieces for that size</small>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label class="required-field"><i class="fas fa-boxes text-success mr-1"></i> Quantity</label>
+                                <input type="number" step="0.01" name="additional_qty" id="additional_qty" class="form-control" 
+                                       placeholder="Enter quantity" required>
+                                <small class="text-muted" id="qtyUnitHint">Pieces (if size selected) / sq ft (product level)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label class="required-field"><i class="fas fa-money-bill-wave text-success mr-1"></i> Purchase Price (₨)</label>
                                 <input type="number" step="0.01" name="stock_purchase_price" class="form-control" 
@@ -472,7 +576,7 @@ if(isset($_POST['add_stock'])) {
                                        placeholder="Enter purchase price" required>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label><i class="fas fa-comment text-success mr-1"></i> Remarks</label>
                                 <input type="text" name="stock_remarks" class="form-control" 
@@ -486,6 +590,95 @@ if(isset($_POST['add_stock'])) {
                             <button type="submit" name="add_stock" class="btn btn-info">
                                 <i class="fas fa-plus-circle mr-1"></i> Add Stock
                             </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Product Sizes Section -->
+        <div class="card form-card">
+            <div class="card-header-custom">
+                <i class="fas fa-arrows-alt mr-2"></i> Product Sizes
+            </div>
+            <div class="card-body">
+                <?php if(count($product_sizes) > 0): ?>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered" id="sizesTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Size</th>
+                                <th>Length (Feet)</th>
+                                <th>Width (Feet)</th>
+                                <th>Area (sq ft)</th>
+                                <th>Opening Pieces</th>
+                                <th>Purchase Rate (₨/sq ft)</th>
+                                <th>Sale Rate (₨/sq ft)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($product_sizes as $sz): ?>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($sz['size_label']); ?></strong></td>
+                                <td class="text-right"><?php echo number_format($sz['length_feet'], 2); ?></td>
+                                <td class="text-right"><?php echo number_format($sz['width_feet'], 2); ?></td>
+                                <td class="text-right"><?php echo number_format($sz['area_sqft'], 2); ?></td>
+                                <td class="text-right"><?php echo number_format($sz['opening_pieces'], 2); ?></td>
+                                <td class="text-right"><?php echo formatCurrency(floatval($sz['purchase_rate']) > 0 ? $sz['purchase_rate'] : $product['purchase_price']); ?></td>
+                                <td class="text-right"><?php echo formatCurrency(floatval($sz['sale_rate']) > 0 ? $sz['sale_rate'] : $product['sale_price']); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="alert alert-info"><i class="fas fa-info-circle mr-2"></i> No sizes added yet. Add sizes below.</div>
+                <?php endif; ?>
+                
+                <hr>
+                <h6 class="text-success font-weight-bold mb-3"><i class="fas fa-plus-circle"></i> Add New Size</h6>
+                <form method="POST" action="" id="sizeForm">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="required-field">Length (Feet)</label>
+                                <input type="number" step="0.01" name="size_length_feet" id="size_length_feet" class="form-control" placeholder="e.g. 4" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="required-field">Width (Feet)</label>
+                                <input type="number" step="0.01" name="size_width_feet" id="size_width_feet" class="form-control" placeholder="e.g. 8" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Area (sq ft)</label>
+                                <input type="number" step="0.01" id="size_area_preview" class="form-control" readonly style="background:#e8f5e9; font-weight:bold;" value="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Opening Qty (Pieces)</label>
+                                <input type="number" step="0.01" name="size_opening_qty" class="form-control" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Purchase Rate (₨/sq ft)</label>
+                                <input type="number" step="0.01" name="size_purchase_price" class="form-control" value="<?php echo $product['purchase_price']; ?>">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Sale Rate (₨/sq ft)</label>
+                                <input type="number" step="0.01" name="size_sale_rate" class="form-control" value="<?php echo $product['sale_price']; ?>">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 text-right">
+                            <button type="submit" name="add_size" class="btn btn-success"><i class="fas fa-plus"></i> Add Size</button>
                         </div>
                     </div>
                 </form>
@@ -658,6 +851,33 @@ $('#stockForm').on('submit', function(e) {
     if(isNaN(price) || price <= 0) {
         e.preventDefault();
         Swal.fire({ title: 'Error!', text: 'Purchase price must be greater than 0!', icon: 'error', confirmButtonColor: '#1e7e34' });
+        return false;
+    }
+});
+
+// Update quantity unit hint based on selected size
+$('#stock_size_id').on('change', function() {
+    if($(this).val() > 0) {
+        $('#qtyUnitHint').text('Quantity is in pieces for this size');
+    } else {
+        $('#qtyUnitHint').text('Pieces (if size selected) / sq ft (product level)');
+    }
+});
+
+// Add New Size form validation + area preview
+$('#size_length_feet, #size_width_feet').on('keyup change', function() {
+    var len = parseFloat($('#size_length_feet').val()) || 0;
+    var wid = parseFloat($('#size_width_feet').val()) || 0;
+    $('#size_area_preview').val((len * wid).toFixed(2));
+});
+
+$('#sizeForm').on('submit', function(e) {
+    var len = parseFloat($('input[name="size_length_feet"]').val());
+    var wid = parseFloat($('input[name="size_width_feet"]').val());
+    
+    if(isNaN(len) || len <= 0 || isNaN(wid) || wid <= 0) {
+        e.preventDefault();
+        Swal.fire({ title: 'Error!', text: 'Length and width must be greater than 0!', icon: 'error', confirmButtonColor: '#1e7e34' });
         return false;
     }
 });
