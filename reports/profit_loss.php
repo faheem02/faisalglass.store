@@ -357,7 +357,19 @@ $page_title = "Profit & Loss Statement";
         }
         
         @media print {
-            .no-print { display: none !important; }
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card-header, .table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
         
         @media (max-width: 768px) {
@@ -398,7 +410,7 @@ $page_title = "Profit & Loss Statement";
                             <i class="fas fa-chart-line"></i> Profit & Loss Statement
                         </h1>
                         <div class="no-print">
-                            <button onclick="window.print()" class="btn btn-secondary btn-sm">
+                            <button onclick="window.open('print_profit_loss.php?from_date=<?php echo $from_date; ?>&to_date=<?php echo $to_date; ?>&filter_type=<?php echo $filter_type; ?>', '_blank', 'width=1000,height=750')" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-print"></i> Print
                             </button>
                             <button id="exportExcelBtn" class="btn btn-success btn-sm">

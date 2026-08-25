@@ -23,28 +23,18 @@ $error_msg = '';
 // Handle Delete Supplier
 if(isset($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
-    
-    // Check if supplier has purchases
-    $check_purchases = "SELECT id FROM purchases WHERE supplier_id = $delete_id LIMIT 1";
-    $purchases_result = mysqli_query($conn, $check_purchases);
-    
-    if(mysqli_num_rows($purchases_result) > 0) {
-        $error_msg = "Cannot delete! This supplier has purchase records.";
+    // Keep all purchase bills, cashbook and bank payment records 100% intact by unlinking supplier
+    mysqli_query($conn, "UPDATE purchase_master SET supplier_id = NULL WHERE supplier_id = $delete_id");
+    mysqli_query($conn, "UPDATE supplier_payments SET supplier_id = NULL WHERE supplier_id = $delete_id");
+    mysqli_query($conn, "UPDATE products SET supplier_id = NULL WHERE supplier_id = $delete_id");
+    mysqli_query($conn, "DELETE FROM supplier_ledger WHERE supplier_id = $delete_id");
+    $delete_query = "DELETE FROM suppliers WHERE id = $delete_id";
+    if(mysqli_query($conn, $delete_query)) {
+        $success_msg = "Supplier deleted successfully! (Purchase bills and payments record remain intact).";
     } else {
-        // Delete ledger entries first
-        mysqli_query($conn, "DELETE FROM supplier_ledger WHERE supplier_id = $delete_id");
-        // Delete payments
-        mysqli_query($conn, "DELETE FROM supplier_payments WHERE supplier_id = $delete_id");
-        // Delete supplier
-        $delete_query = "DELETE FROM suppliers WHERE id = $delete_id";
-        if(mysqli_query($conn, $delete_query)) {
-            $success_msg = "Supplier deleted successfully!";
-        } else {
-            $error_msg = "Failed to delete supplier!";
-        }
+        $error_msg = "Failed to delete supplier: " . mysqli_error($conn);
     }
 }
-
 // Handle Status Toggle
 if(isset($_GET['toggle_status'])) {
     $supplier_id = intval($_GET['toggle_status']);
@@ -170,6 +160,23 @@ $suppliers_result = mysqli_query($conn, $suppliers_query);
             color: #4a5568;
             font-size: 14px;
         }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header-custom, .table thead th,
+            .status-badge-active, .status-badge-inactive {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -184,11 +191,11 @@ $suppliers_result = mysqli_query($conn, $suppliers_query);
             <h1 class="h3 mb-0 text-gray-800">
                 <i class="fas fa-truck text-success mr-2"></i> View Supplier Ledgers
             </h1>
-            <div>
+            <div class="no-print">
                 <a href="supplier.php" class="btn btn-green">
                     <i class="fas fa-plus-circle mr-1"></i> Add New Supplier
                 </a>
-                <button type="button" class="btn btn-outline-success ml-2" onclick="window.print()">
+                <button type="button" class="btn btn-outline-success ml-2" onclick="window.open('print_supplier_list.php', '_blank', 'width=1000,height=750')">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-outline-info ml-2" id="exportBtn">
@@ -311,7 +318,7 @@ $suppliers_result = mysqli_query($conn, $suppliers_query);
         </div>
         
         <!-- Filter Section -->
-        <div class="card form-card">
+        <div class="card form-card no-print">
             <div class="card-header-custom">
                 <i class="fas fa-filter mr-2"></i> Filter Suppliers
             </div>
@@ -648,3 +655,4 @@ $('#exportBtn').on('click', function() {
 </html>
 
 <?php mysqli_close($conn); ?>
+

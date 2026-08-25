@@ -169,6 +169,22 @@ $method_result = mysqli_query($conn, $method_query);
         .print-btn, .export-btn {
             cursor: pointer;
         }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header-custom, .table thead th, .badge-cash, .badge-bank {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -183,11 +199,11 @@ $method_result = mysqli_query($conn, $method_query);
             <h1 class="h3 mb-0 text-gray-800">
                 <i class="fas fa-money-bill-wave text-success mr-2"></i> Supplier Payment History
             </h1>
-            <div>
+            <div class="no-print">
                 <a href="supplier_view.php" class="btn btn-secondary">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Suppliers
                 </a>
-                <button type="button" class="btn btn-info ml-2 print-btn" onclick="window.print()">
+                <button type="button" class="btn btn-info ml-2 print-btn" onclick="window.open('print_payment_history.php?from_date=<?php echo $from_date; ?>&to_date=<?php echo $to_date; ?>&supplier_id=<?php echo $supplier_filter; ?>', '_blank', 'width=1000,height=750')">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-green ml-2 export-btn" id="exportBtn">
@@ -197,7 +213,7 @@ $method_result = mysqli_query($conn, $method_query);
         </div>
         
         <!-- Filter Section -->
-        <div class="card form-card">
+        <div class="card form-card no-print">
             <div class="card-header-custom">
                 <i class="fas fa-filter mr-2"></i> Filter Payments
             </div>
@@ -428,7 +444,7 @@ $method_result = mysqli_query($conn, $method_query);
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+                <button type="button" class="btn btn-primary" onclick="printPaymentReceipt()">Print</button>
             </div>
         </div>
     </div>
@@ -442,6 +458,7 @@ $method_result = mysqli_query($conn, $method_query);
 
 <script>
 var paymentsTable;
+var currentPaymentId = 0;
 
 $(document).ready(function() {
     // Initialize DataTable
@@ -467,6 +484,7 @@ $(document).ready(function() {
 
 // View Payment Details
 function viewPayment(id) {
+    currentPaymentId = id;
     $.ajax({
         url: 'get_payment_details.php',
         type: 'GET',
@@ -479,6 +497,14 @@ function viewPayment(id) {
             Swal.fire({ title: 'Error!', text: 'Failed to load payment details!', icon: 'error', confirmButtonColor: '#1e7e34' });
         }
     });
+}
+
+function printPaymentReceipt() {
+    if(currentPaymentId === 0) {
+        Swal.fire({ title: 'Error!', text: 'No payment selected!', icon: 'error', confirmButtonColor: '#1e7e34' });
+        return;
+    }
+    window.open('print_payment_receipt.php?id=' + currentPaymentId, '_blank', 'width=900,height=700');
 }
 
 // Delete Payment

@@ -144,8 +144,6 @@ $month_purchase = floatval($month_summary['month_total']);
     <style>
         .btn-green { background-color: #1e7e34; border-color: #1e7e34; color: white; }
         .btn-green:hover { background-color: #155724; border-color: #155724; color: white; }
-        .btn-refund { background-color: #ffc107; border-color: #ffc107; color: #1a1a1a; }
-        .btn-refund:hover { background-color: #e0a800; color: #1a1a1a; }
         .card-header-custom { background: linear-gradient(135deg, #1e7e34, #0066cc); color: white; border-radius: 10px 10px 0 0; padding: 15px 20px; }
         .form-card { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px; }
         .summary-card { text-align: center; padding: 20px; border-radius: 10px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); height: 100%; transition: transform 0.2s; }
@@ -157,7 +155,24 @@ $month_purchase = floatval($month_summary['month_total']);
         .badge-pending { background-color: #dc3545; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; }
         .badge-refund { background-color: #17a2b8; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; }
         .invoice-no { font-family: monospace; font-weight: bold; color: #0066cc; }
-        .action-buttons .btn { margin: 2px; }
+        .action-btns{display:flex;align-items:center;flex-wrap:nowrap;gap:4px}
+        .action-btns .btn{display:inline-flex;align-items:center;white-space:nowrap}
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header-custom, .table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -171,11 +186,11 @@ $month_purchase = floatval($month_summary['month_total']);
             <h1 class="h3 mb-0 text-gray-800">
                 <i class="fas fa-file-invoice text-success mr-2"></i> View Purchase Invoice
             </h1>
-            <div>
+            <div class="no-print">
                 <a href="add_purchase.php" class="btn btn-green">
                     <i class="fas fa-plus-circle mr-1"></i> Add Purchase
                 </a>
-                <button type="button" class="btn btn-outline-success ml-2" onclick="window.print()">
+                <button type="button" class="btn btn-outline-success ml-2" onclick="window.open('print_purchase_list.php?from_date=<?php echo urlencode($from_date); ?>&to_date=<?php echo urlencode($to_date); ?>&supplier_id=<?php echo $filter_supplier; ?>&invoice_no=<?php echo urlencode($filter_invoice); ?>&payment_type=<?php echo urlencode($filter_payment_type); ?>', '_blank', 'width=1100,height=700')">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-outline-info ml-2" id="exportBtn">
@@ -198,7 +213,7 @@ $month_purchase = floatval($month_summary['month_total']);
             <div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-warning text-uppercase mb-1">Outstanding Payables</div><div class="summary-number text-warning"><?php echo formatCurrency($total_remaining); ?></div><small><?php echo $total_count; ?> Invoices</small></div></div>
         </div>
         
-        <div class="card form-card">
+        <div class="card form-card no-print">
             <div class="card-header-custom"><i class="fas fa-filter mr-2"></i> Filter Purchases</div>
             <div class="card-body">
                 <form method="GET" action="" class="form-inline">
@@ -231,7 +246,7 @@ $month_purchase = floatval($month_summary['month_total']);
                                 <th>Reference No</th>
                                 <th>Remarks</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th class="no-print">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -284,13 +299,13 @@ $month_purchase = floatval($month_summary['month_total']);
                                 <td><?php echo !empty($purchase['reference_no']) ? htmlspecialchars($purchase['reference_no']) : '-'; ?></td>
                                 <td><?php echo !empty($purchase['remarks']) ? htmlspecialchars($purchase['remarks']) : '-'; ?></td>
                                 <td class="text-center"><span class="<?php echo $status_class; ?>"><?php echo $status; ?></span></td>
-                                <td class="action-buttons text-nowrap">
-                                    <button class="btn btn-sm btn-info" onclick="viewInvoice(<?php echo $purchase['id']; ?>)" title="View Details"><i class="fas fa-eye"></i></button>
-                                    <button class="btn btn-sm btn-primary" onclick="printInvoice('<?php echo isset($purchase['invoice_no']) ? $purchase['invoice_no'] : ''; ?>')" title="Print"><i class="fas fa-print"></i></button>
-                                    <?php if(($refund_status == 'none' || $refund_status === null || $refund_status == '') && $grand_total > 0): ?>
-                                    <button class="btn btn-sm btn-refund" onclick="openRefundModal(<?php echo $purchase['id']; ?>, '<?php echo isset($purchase['invoice_no']) ? $purchase['invoice_no'] : ''; ?>')" title="Refund"><i class="fas fa-undo-alt"></i> Refund</button>
-                                    <?php endif; ?>
-                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete(<?php echo $purchase['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                <td class="text-nowrap no-print">
+                                    <div class="action-btns">
+                                        <button class="btn btn-sm btn-info" onclick="viewInvoice(<?php echo $purchase['id']; ?>, '<?php echo isset($purchase['invoice_no']) ? htmlspecialchars($purchase['invoice_no'], ENT_QUOTES) : ''; ?>')" title="View Details"><i class="fas fa-eye"></i></button>
+                                        <a href="add_purchase.php?edit_id=<?php echo $purchase['id']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <button class="btn btn-sm btn-primary" onclick="printInvoice('<?php echo isset($purchase['invoice_no']) ? htmlspecialchars($purchase['invoice_no'], ENT_QUOTES) : ''; ?>')" title="Print"><i class="fas fa-print"></i></button>
+                                        <button class="btn btn-sm btn-danger" onclick="confirmDelete(<?php echo $purchase['id']; ?>)" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endwhile; ?>
@@ -322,24 +337,7 @@ $month_purchase = floatval($month_summary['month_total']);
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body" id="invoiceDetails"><div class="text-center p-5"><div class="spinner-border text-success" role="status"></div><p class="mt-2">Loading invoice details...</p></div></div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button><button type="button" class="btn btn-primary" onclick="window.print()">Print</button></div>
-        </div>
-    </div>
-</div>
-
-<!-- Refund Modal -->
-<div class="modal fade" id="refundModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #ffc107, #e0a800); color: #1a1a1a;">
-                <h5 class="modal-title"><i class="fas fa-undo-alt"></i> Process Purchase Refund</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body" id="refundModalBody"><div class="text-center p-5"><div class="spinner-border text-warning" role="status"></div><p class="mt-2">Loading purchase details...</p></div></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-warning" id="processRefundBtn">Process Refund</button>
-            </div>
+            <div class="modal-footer" id="invoiceFooter"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div>
         </div>
     </div>
 </div>
@@ -374,9 +372,14 @@ $(document).ready(function() {
     }
 });
 
-function viewInvoice(id) {
+function viewInvoice(id, invoiceNo) {
     $('#invoiceDetails').html('<div class="text-center p-5"><div class="spinner-border text-success" role="status"></div><p class="mt-2">Loading invoice details...</p></div>');
     $('#viewInvoiceModal').modal('show');
+    $('#invoiceFooter').html(
+        '<a href="add_purchase.php?edit_id=' + id + '" class="btn btn-warning"><i class="fas fa-edit"></i> Edit</a>' +
+        '<button type="button" class="btn btn-primary" onclick="printInvoice(\'' + invoiceNo + '\')"><i class="fas fa-print"></i> Print</button>' +
+        '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>'
+    );
     $.ajax({
         url: 'get_invoice_details.php',
         type: 'GET',
@@ -387,7 +390,7 @@ function viewInvoice(id) {
 }
 
 function printInvoice(invoiceNo) {
-    window.open('print_invoice.php?invoice_no=' + invoiceNo, '_blank', 'width=900,height=600');
+    window.open('print_invoice.php?invoice_no=' + encodeURIComponent(invoiceNo), '_blank', 'width=900,height=600');
 }
 
 function confirmDelete(id) {
@@ -401,132 +404,6 @@ function confirmDelete(id) {
     }).then((result) => {
         if(result.isConfirmed) window.location.href = 'view_invoice.php?delete_id=' + id;
     });
-}
-
-function openRefundModal(purchaseId, invoiceNo) {
-    $('#refundModal').modal('show');
-    $('#refundModalBody').html('<div class="text-center p-5"><div class="spinner-border text-warning" role="status"></div><p class="mt-2">Loading purchase details...</p></div>');
-    
-    $.ajax({
-        url: 'get_purchase_details_for_refund.php',
-        type: 'GET',
-        data: { purchase_id: purchaseId },
-        dataType: 'json',
-        success: function(response) {
-            if(response.success) {
-                var html = `
-                    <input type="hidden" id="refund_purchase_id" value="${response.purchase_id}">
-                    <div class="alert alert-info">
-                        <strong>Invoice: ${response.invoice_no}</strong><br>
-                        Supplier: ${response.supplier_name}<br>
-                        Purchase Date: ${response.purchase_date}
-                    </div>
-                    <div class="form-group">
-                        <label>Refund Date</label>
-                        <input type="date" id="refund_date" class="form-control" value="${new Date().toISOString().slice(0,10)}">
-                    </div>
-                    <div class="form-group">
-                        <label>Refund Reason</label>
-                        <textarea id="refund_reason" class="form-control" rows="2" placeholder="Enter reason for refund"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Select Items to Refund</label>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th width="5%"><input type="checkbox" id="selectAll"></th>
-                                        <th>Product</th>
-                                        <th>Size</th>
-                                        <th>Original Qty</th>
-                                        <th width="15%">Refund Qty</th>
-                                        <th>Unit Price</th>
-                                        <th width="15%">Refund Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-                
-                for(var i=0; i<response.items.length; i++){
-                    var item = response.items[i];
-                    html += `
-                        <tr>
-                            <td class="text-center"><input type="checkbox" class="refund-item-checkbox" data-id="${item.id}" data-max-qty="${item.quantity}" data-unit-price="${item.unit_price}"></td>
-                            <td>${item.product_name}<br><small>${item.product_code}</small></td>
-                            <td>${item.client_size || '-'}</td>
-                            <td class="text-center">${item.quantity}</td>
-                            <td><input type="number" step="0.01" class="form-control refund-qty" data-id="${item.id}" disabled min="0" max="${item.quantity}" value="0"></td>
-                            <td class="text-right">${formatCurrency(item.unit_price)}<\/td>
-                            <td><input type="number" step="0.01" class="form-control refund-amount" data-id="${item.id}" disabled value="0"><\/td>
-                        \)'<script>'<iframe src="javascript:void(0)"></iframe>'\`
-                    </tr>
-                `;
-                }
-                
-                html += `
-                                </tbody>
-                             </table>
-                        </div>
-                    </div>
-                    <div class="alert alert-warning" id="refundTotalAlert">
-                        Total Refund Amount: <strong>₨ 0.00</strong>
-                    </div>
-                `;
-                $('#refundModalBody').html(html);
-                
-                $('#selectAll').on('change', function() {
-                    $('.refund-item-checkbox').prop('checked', $(this).is(':checked')).trigger('change');
-                });
-                
-                $('.refund-item-checkbox').on('change', function() {
-                    var row = $(this).closest('tr');
-                    var qtyInput = row.find('.refund-qty');
-                    var amountInput = row.find('.refund-amount');
-                    if($(this).is(':checked')) {
-                        qtyInput.prop('disabled', false);
-                        amountInput.prop('disabled', false);
-                        qtyInput.val(1);
-                        var unitPrice = parseFloat($(this).data('unit-price'));
-                        amountInput.val(unitPrice.toFixed(2));
-                    } else {
-                        qtyInput.prop('disabled', true).val(0);
-                        amountInput.prop('disabled', true).val(0);
-                    }
-                    calculateRefundTotal();
-                });
-                
-                $('.refund-qty').on('keyup change', function() {
-                    var row = $(this).closest('tr');
-                    var checkbox = row.find('.refund-item-checkbox');
-                    var maxQty = parseFloat(checkbox.data('max-qty'));
-                    var qty = parseFloat($(this).val()) || 0;
-                    if(qty > maxQty) { qty = maxQty; $(this).val(qty); }
-                    var unitPrice = parseFloat(checkbox.data('unit-price'));
-                    row.find('.refund-amount').val((qty * unitPrice).toFixed(2));
-                    calculateRefundTotal();
-                });
-                
-                $('.refund-amount').on('keyup change', function() {
-                    var row = $(this).closest('tr');
-                    var checkbox = row.find('.refund-item-checkbox');
-                    var amount = parseFloat($(this).val()) || 0;
-                    var unitPrice = parseFloat(checkbox.data('unit-price'));
-                    row.find('.refund-qty').val((amount / unitPrice).toFixed(2));
-                    calculateRefundTotal();
-                });
-            } else {
-                $('#refundModalBody').html('<div class="alert alert-danger">' + response.message + '</div>');
-            }
-        },
-        error: function() {
-            $('#refundModalBody').html('<div class="alert alert-danger">Failed to load purchase details!</div>');
-        }
-    });
-}
-
-function calculateRefundTotal() {
-    var total = 0;
-    $('.refund-amount').each(function() { total += parseFloat($(this).val()) || 0; });
-    $('#refundTotalAlert').html('Total Refund Amount: <strong>' + formatCurrency(total) + '</strong>');
 }
 
 function formatCurrency(amount) {
@@ -551,70 +428,6 @@ $('#exportBtn').on('click', function() {
     a.click();
     URL.revokeObjectURL(url);
     Swal.fire({ title: 'Success!', text: 'Export completed successfully!', icon: 'success', confirmButtonColor: '#1e7e34', timer: 2000 });
-});
-
-$('#processRefundBtn').on('click', function() {
-    var purchaseId = $('#refund_purchase_id').val();
-    var refundDate = $('#refund_date').val();
-    var refundReason = $('#refund_reason').val();
-    var refundItems = [], refundQuantities = [], refundAmounts = [];
-    
-    $('.refund-item-checkbox:checked').each(function() {
-        var row = $(this).closest('tr');
-        var qty = row.find('.refund-qty').val();
-        var amount = row.find('.refund-amount').val();
-        if(parseFloat(qty) > 0) {
-            refundItems.push($(this).data('id'));
-            refundQuantities.push(qty);
-            refundAmounts.push(amount);
-        }
-    });
-    
-    if(refundItems.length === 0) {
-        Swal.fire({ title: 'Error!', text: 'Please select at least one item to refund!', icon: 'error' });
-        return;
-    }
-    if(!refundDate) {
-        Swal.fire({ title: 'Error!', text: 'Please select refund date!', icon: 'error' });
-        return;
-    }
-    
-    Swal.fire({
-        title: 'Confirm Refund',
-        text: 'Are you sure you want to process this purchase refund? This action cannot be undone.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ffc107',
-        confirmButtonText: 'Yes, Process Refund!'
-    }).then((result) => {
-        if(result.isConfirmed) {
-            Swal.fire({ title: 'Processing...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-            $.ajax({
-                url: 'refund_purchase.php',
-                type: 'POST',
-                data: {
-                    refund_purchase: 1,
-                    purchase_id: purchaseId,
-                    refund_date: refundDate,
-                    refund_reason: refundReason,
-                    refund_items: refundItems,
-                    refund_quantities: refundQuantities,
-                    refund_amounts: refundAmounts
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if(response.success) {
-                        Swal.fire({ title: 'Success!', text: response.message, icon: 'success', confirmButtonColor: '#1e7e34' }).then(() => { location.reload(); });
-                    } else {
-                        Swal.fire({ title: 'Error!', text: response.message, icon: 'error' });
-                    }
-                },
-                error: function() {
-                    Swal.fire({ title: 'Error!', text: 'Failed to process refund!', icon: 'error' });
-                }
-            });
-        }
-    });
 });
 </script>
 

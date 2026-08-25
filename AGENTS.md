@@ -40,6 +40,7 @@ Modules in top-level directories (no router, no controllers):
 | `reports/` | 9 files — sale, purchase, profit/loss, inventory, invoice, refund, customer, supplier, salary |
 | `expenses/` | Expense heads, details, view by head |
 | `includes/` | `database.php`, `txt.php`, `header.php`, `sidebar.php`, `footer.php` |
+| `sql/` | Migration scripts (`.sql` + one PHP runner) — run manually, no migration framework |
 
 ## Conventions
 

@@ -45,7 +45,7 @@ if(isset($_POST['save_customer'])) {
     $email = trim($_POST['email']);
     $address = trim($_POST['address']);
     $opening_balance = floatval($_POST['opening_balance']);
-    $balance_type = $_POST['balance_type'];
+    $balance_type = in_array($_POST['balance_type'] ?? '', ['receivable', 'payable']) ? $_POST['balance_type'] : 'receivable';
     $status = isset($_POST['status']) ? 1 : 0;
     $notes = trim($_POST['notes']);
     
@@ -74,18 +74,20 @@ if(isset($_POST['save_customer'])) {
             $error_msg = "Customer name already exists!";
         } else {
             // Calculate current balance based on opening balance and type
-            $current_balance = $opening_balance;
+            $current_balance = ($balance_type == 'receivable') ? $opening_balance : -$opening_balance;
             
             // Generate customer code
             $customer_code = generateCustomerCode($conn);
             
-            // SIMPLE INSERT QUERY - using all columns that exist in your table
+            // Insert query
             $insert_query = "INSERT INTO customers (
                 customer_code, 
                 customer_name, 
                 company_name, 
+                contact_person,
                 mobile, 
                 cnic, 
+                ntn,
                 email, 
                 address, 
                 opening_balance, 
@@ -97,8 +99,10 @@ if(isset($_POST['save_customer'])) {
                 '$customer_code',
                 '$customer_name',
                 '$company_name',
+                '$contact_person',
                 '$mobile',
                 '$cnic',
+                '$ntn',
                 '$email',
                 '$address',
                 '$opening_balance',
@@ -107,9 +111,6 @@ if(isset($_POST['save_customer'])) {
                 '$status',
                 '$notes'
             )";
-            
-            // Debug - uncomment to see the query
-            // echo "<pre>$insert_query</pre>";
             
             if(mysqli_query($conn, $insert_query)) {
                 $customer_id = mysqli_insert_id($conn);
@@ -122,11 +123,9 @@ if(isset($_POST['save_customer'])) {
                     $description = "";
                     
                     if($balance_type == 'receivable') {
-                        // Customer owes company - Debit entry
                         $debit = $opening_balance;
                         $description = "Opening Balance - Receivable (Customer owes company)";
                     } elseif($balance_type == 'payable') {
-                        // Company owes customer - Credit entry
                         $credit = $opening_balance;
                         $description = "Opening Balance - Payable (Company owes customer)";
                     }
@@ -151,16 +150,11 @@ if(isset($_POST['save_customer'])) {
                         '$current_balance'
                     )";
                     
-                    if(!mysqli_query($conn, $ledger_query)) {
-                        $error_msg = "Customer added but ledger entry failed: " . mysqli_error($conn);
-                    } else {
-                        $success_msg = "Customer added successfully! Customer Code: $customer_code";
-                        echo "<script>setTimeout(() => { window.location.href = 'view_customer.php'; }, 2000);</script>";
-                    }
-                } else {
-                    $success_msg = "Customer added successfully! Customer Code: $customer_code";
-                    echo "<script>setTimeout(() => { window.location.href = 'view_customer.php'; }, 2000);</script>";
+                    mysqli_query($conn, $ledger_query);
                 }
+                
+                $success_msg = "Customer added successfully! Customer Code: $customer_code";
+                echo "<script>setTimeout(() => { window.location.href = 'view_customer.php'; }, 2000);</script>";
             } else {
                 $error_msg = "Failed to add customer: " . mysqli_error($conn);
             }
@@ -184,7 +178,7 @@ if(isset($_POST['save_customer'])) {
     <style>
         .btn-green { background-color: #1e7e34; border-color: #1e7e34; color: white; }
         .btn-green:hover { background-color: #155724; border-color: #155724; color: white; }
-        .card-header-custom { background: linear-gradient(135deg, #1e7e34, #0066cc); color: white; border-radius: 10px 10px 0 0; padding: 15px 20px; }
+        .card-header-custom { background: linear-gradient(135deg, #1e7e34, #0066cc); color: white; border-radius: 10px 10px 0 0; padding: 15px 20px; font-weight: 600; }
         .form-card { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px; }
         .required-field::after { content: " *"; color: red; }
         .preview-code { background: #e8f5e9; padding: 8px 15px; border-radius: 8px; display: inline-block; font-weight: bold; color: #1e7e34; }
@@ -198,15 +192,15 @@ if(isset($_POST['save_customer'])) {
     
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div class="container-fluid">
+            <div class="container-fluid mt-4">
                 
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-0 text-gray-800">
-                        <i class="fas fa-users text-success mr-2"></i> Add Customer Ledgers
+                        <i class="fas fa-user-plus text-success mr-2"></i> Add Customer
                     </h1>
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="../dashboard/dashboard.php">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="#">Customer Ledger</a></li>
+                        <li class="breadcrumb-item"><a href="view_customer.php">Customers</a></li>
                         <li class="breadcrumb-item active">Add Customer</li>
                     </ol>
                 </div>
@@ -315,10 +309,10 @@ if(isset($_POST['save_customer'])) {
                                         <label>
                                             <i class="fas fa-toggle-on text-success mr-1"></i> Status
                                         </label>
-                                        <div class="custom-control custom-switch">
+                                        <div class="custom-control custom-switch mt-2">
                                             <input type="checkbox" class="custom-control-input" id="status" 
                                                    name="status" checked>
-                                            <label class="custom-control-label" for="status">Active</label>
+                                            <label class="custom-control-label font-weight-bold" for="status">Active</label>
                                         </div>
                                     </div>
                                 </div>
@@ -340,7 +334,7 @@ if(isset($_POST['save_customer'])) {
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label>
-                                            <i class="fas fa-money-bill-wave text-success mr-1"></i> Opening Balance (₨)
+                                            <i class="fas fa-money-bill-wave text-success mr-1"></i> Opening Balance (Rs)
                                         </label>
                                         <input type="number" step="0.01" name="opening_balance" 
                                                class="form-control" id="openingBalance" value="0">
@@ -393,42 +387,10 @@ if(isset($_POST['save_customer'])) {
                         </form>
                     </div>
                 </div>
-                
-                <div class="card form-card">
-                    <div class="card-header-custom">
-                        <i class="fas fa-info-circle mr-2"></i> Important Information
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 text-center">
-                                <i class="fas fa-plus-circle fa-2x text-success mb-2"></i>
-                                <h6>Positive Balance (+)</h6>
-                                <p class="small text-muted">Receivable: Customer owes company<br>Appears in Accounts Receivable</p>
-                            </div>
-                            <div class="col-md-4 text-center">
-                                <i class="fas fa-minus-circle fa-2x text-danger mb-2"></i>
-                                <h6>Negative Balance (-)</h6>
-                                <p class="small text-muted">Payable: Company owes customer<br>Appears in Accounts Payable</p>
-                            </div>
-                            <div class="col-md-4 text-center">
-                                <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
-                                <h6>Auto Ledger Entry</h6>
-                                <p class="small text-muted">Opening balance automatically creates customer ledger entry</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
             </div>
         </div>
         
-        <footer class="sticky-footer bg-white">
-            <div class="container my-auto">
-                <div class="copyright text-center my-auto">
-                    <span>&copy; <?php echo date('Y'); ?> <?php echo $software_name; ?> - All Rights Reserved</span>
-                </div>
-            </div>
-        </footer>
+        <?php include('../includes/footer.php'); ?>
     </div>
 </div>
 
@@ -437,58 +399,40 @@ if(isset($_POST['save_customer'])) {
 <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
 
 <script>
-$(document).ready(function() {
-    $('#balanceType').on('change', function() {
-        if($(this).val() === 'receivable') {
-            $('#selectedType').text('Receivable').css('color', '#1e7e34');
+    function updateBalanceExplanation() {
+        var type = $('#balanceType').val();
+        if(type === 'receivable') {
+            $('#selectedType').text('Receivable (+)').css('color', '#1e7e34');
             $('#selectedExplanation').text('Customer owes company this amount (Debit)');
+            $('#balanceInfo').css('border-left-color', '#1e7e34');
         } else {
-            $('#selectedType').text('Payable').css('color', '#dc3545');
-            $('#selectedExplanation').text('Company owes customer this amount (Credit)');
+            $('#selectedType').text('Payable (-)').css('color', '#dc3545');
+            $('#selectedExplanation').text('Company owes customer this amount (Credit/Advance)');
+            $('#balanceInfo').css('border-left-color', '#dc3545');
         }
-    });
-    $('#balanceType').trigger('change');
-});
-
-$('#customerForm').on('submit', function(e) {
-    var customerName = $('input[name="customer_name"]').val().trim();
-    var mobile = $('input[name="mobile"]').val().trim();
-    var openingBalance = parseFloat($('#openingBalance').val());
+    }
     
-    if(customerName === '') {
-        e.preventDefault();
-        Swal.fire({ 
-            title: 'Error!', 
-            text: 'Customer name is required!', 
-            icon: 'error', 
-            confirmButtonColor: '#1e7e34' 
-        });
-        return false;
-    }
-    if(mobile === '') {
-        e.preventDefault();
-        Swal.fire({ 
-            title: 'Error!', 
-            text: 'Mobile number is required!', 
-            icon: 'error', 
-            confirmButtonColor: '#1e7e34' 
-        });
-        return false;
-    }
-    if(isNaN(openingBalance) || openingBalance < 0) {
-        e.preventDefault();
-        Swal.fire({ 
-            title: 'Error!', 
-            text: 'Opening balance cannot be negative!', 
-            icon: 'error', 
-            confirmButtonColor: '#1e7e34' 
-        });
-        return false;
-    }
-});
-</script>
+    $('#balanceType').on('change', updateBalanceExplanation);
+    $(document).ready(function() {
+        updateBalanceExplanation();
+    });
 
+    $('#customerForm').on('submit', function(e) {
+        var customerName = $('input[name="customer_name"]').val().trim();
+        var mobile = $('input[name="mobile"]').val().trim();
+        
+        if(customerName === '') {
+            e.preventDefault();
+            Swal.fire({ title: 'Error!', text: 'Customer name is required!', icon: 'error', confirmButtonColor: '#1e7e34' });
+            return false;
+        }
+        if(mobile === '') {
+            e.preventDefault();
+            Swal.fire({ title: 'Error!', text: 'Mobile number is required!', icon: 'error', confirmButtonColor: '#1e7e34' });
+            return false;
+        }
+        return true;
+    });
+</script>
 </body>
 </html>
-
-<?php mysqli_close($conn); ?>

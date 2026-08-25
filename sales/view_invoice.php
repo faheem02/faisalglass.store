@@ -70,6 +70,8 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
     <style>
         .btn-green{background:#1e7e34;border-color:#1e7e34;color:white}.btn-green:hover{background:#155724}
         .btn-refund{background:#ffc107;border-color:#ffc107;color:#1a1a1a}.btn-refund:hover{background:#e0a800;color:#1a1a1a}
+        .action-btns{display:flex;align-items:center;flex-wrap:nowrap;gap:4px}
+        .action-btns .btn{display:inline-flex;align-items:center;white-space:nowrap}
         .card-header-custom{background:linear-gradient(135deg,#1e7e34,#0066cc);color:white;border-radius:10px 10px 0 0;padding:15px 20px}
         .summary-card{text-align:center;padding:20px;border-radius:10px;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
         .summary-number{font-size:28px;font-weight:bold}
@@ -78,8 +80,17 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
         .badge-pending{background:#dc3545;color:white;padding:5px 12px;border-radius:20px}
         .badge-refund{background:#17a2b8;color:white;padding:5px 12px;border-radius:20px}
         .table thead th{background:#1e7e34;color:white}
-        .refund-item { border-bottom: 1px solid #eee; padding: 10px; }
-        .refund-item:last-child { border-bottom: none; }
+        .view-info-card { background: #f8faf9; border: 1px solid #e5e7eb; border-left: 3px solid #1e7e34; border-radius: 4px; padding: 8px 12px; }
+        .view-info-label { font-size: 10px; font-weight: 700; color: #6b7280; letter-spacing: 1px; text-transform: uppercase; }
+        .view-info-value { font-weight: 600; color: #111827; word-break: break-word; }
+        .view-total-label { font-size: 12px; font-weight: 600; color: #374151; }
+        .view-total-value { font-weight: 700; color: #111827; text-align: right; }
+        .view-grand-total { background: #1e7e34; color: #fff; border-radius: 6px; }
+        .view-grand-total .view-total-label { color: #fff; }
+        .view-grand-total .view-total-value { color: #fff; font-size: 16px; }
+        .view-modal-table thead th { background-color: #1e7e34; color: white; font-weight: 600; font-size: 12px; text-align: center; border: none; }
+        .view-modal-table td { vertical-align: middle; font-size: 13px; }
+        .view-modal-table .size-subheader th { background: #0f6bb5; font-size: 10px; padding: 5px; font-weight: 500; }
     </style>
 </head>
 <body id="page-top"><div id="wrapper"><?php include('../includes/sidebar.php'); ?><div class="container-fluid">
@@ -112,38 +123,35 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
     <td><?php echo $sale['remarks'] ? htmlspecialchars($sale['remarks']) : '-'; ?></td>
     <td class="text-center"><span class="<?php echo $status_class; ?>"><?php echo $status; ?></span></td>
     <td>
-        <button class="btn btn-sm btn-info" onclick="window.open('print_invoice.php?invoice_no=<?php echo $sale['invoice_no']; ?>', '_blank')"><i class="fas fa-print"></i></button>
-        <?php if($sale['refund_status'] == 'none'): ?>
-        <a href="add_sale.php?edit_id=<?php echo $sale['id']; ?>" class="btn btn-sm btn-warning ml-1"><i class="fas fa-edit"></i></a>
-        <?php endif; ?>
-        <?php if($sale['refund_status'] == 'none' && $sale['grand_total'] > 0): ?>
-        <button class="btn btn-sm btn-refund ml-1" onclick="openRefundModal(<?php echo $sale['id']; ?>, '<?php echo $sale['invoice_no']; ?>')"><i class="fas fa-undo-alt"></i> Refund</button>
-        <?php endif; ?>
-        <button class="btn btn-sm btn-danger ml-1" onclick="confirmDelete(<?php echo $sale['id']; ?>)"><i class="fas fa-trash"></i></button>
+        <div class="action-btns">
+            <button class="btn btn-sm btn-info" title="View Sale" onclick="openViewModal(<?php echo $sale['id']; ?>)"><i class="fas fa-eye"></i></button>
+            <a href="add_sale.php?edit_id=<?php echo $sale['id']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+            <button class="btn btn-sm btn-primary" title="Print" onclick="window.open('print_invoice.php?invoice_no=<?php echo urlencode($sale['invoice_no']); ?>', '_blank')"><i class="fas fa-print"></i></button>
+            <button class="btn btn-sm btn-danger" title="Delete" onclick="confirmDelete(<?php echo $sale['id']; ?>)"><i class="fas fa-trash"></i></button>
+        </div>
     </td>
 </tr>
 <?php endwhile; ?>
 </tbody></table></div></div></div></div><footer class="sticky-footer bg-white"><div class="container my-auto"><div class="copyright text-center my-auto"><span>&copy; <?php echo date('Y'); ?> <?php echo $software_name; ?> - All Rights Reserved</span></div></div></footer></div>
 
-<!-- Refund Modal -->
-<div class="modal fade" id="refundModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+<!-- View Sale Modal -->
+<div class="modal fade" id="viewSaleModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #ffc107, #e0a800); color: #1a1a1a;">
-                <h5 class="modal-title"><i class="fas fa-undo-alt"></i> Process Refund</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e7e34, #0066cc); color: white;">
+                <h5 class="modal-title"><i class="fas fa-file-invoice"></i> Sale Invoice Details</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" id="refundModalBody">
+            <div class="modal-body" id="viewSaleBody">
                 <div class="text-center p-5">
-                    <div class="spinner-border text-warning" role="status"></div>
+                    <div class="spinner-border text-success" role="status"></div>
                     <p class="mt-2">Loading sale details...</p>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-refund" id="processRefundBtn">Process Refund</button>
+            <div class="modal-footer" id="viewSaleFooter">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -173,214 +181,107 @@ function confirmDelete(id){
     });
 }
 
-function openRefundModal(saleId, invoiceNo){
-    $('#refundModal').modal('show');
-    $('#refundModalBody').html('<div class="text-center p-5"><div class="spinner-border text-warning" role="status"></div><p class="mt-2">Loading sale details...</p></div>');
+function openViewModal(id){
+    $('#viewSaleModal').modal('show');
+    $('#viewSaleBody').html('<div class="text-center p-5"><div class="spinner-border text-success" role="status"></div><p class="mt-2">Loading sale details...</p></div>');
     
     $.ajax({
-        url: 'get_sale_details_for_refund.php',
+        url: 'get_sale_details.php',
         type: 'GET',
-        data: { sale_id: saleId },
+        data: { id: id },
         dataType: 'json',
         success: function(response){
-            if(response.success){
-                var html = `
-                    <input type="hidden" id="refund_sale_id" value="${response.sale_id}">
-                    <div class="alert alert-info">
-                        <strong>Invoice: ${response.invoice_no}</strong><br>
-                        Customer: ${response.customer_name}<br>
-                        Sale Date: ${response.sale_date}
-                    </div>
-                    <div class="form-group">
-                        <label>Refund Date</label>
-                        <input type="date" id="refund_date" class="form-control" value="${new Date().toISOString().slice(0,10)}">
-                    </div>
-                    <div class="form-group">
-                        <label>Refund Reason</label>
-                        <textarea id="refund_reason" class="form-control" rows="2" placeholder="Enter reason for refund"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Select Items to Refund</label>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th width="5%"><input type="checkbox" id="selectAll"></th>
-                                        <th>Product</th>
-                                        <th>Size</th>
-                                        <th>Original Qty</th>
-                                        <th width="15%">Refund Qty</th>
-                                        <th>Unit Price</th>
-                                        <th width="15%">Refund Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-                
-                for(var i=0; i<response.items.length; i++){
-                    var item = response.items[i];
-                    html += `
-                        <tr>
-                            <td class="text-center"><input type="checkbox" class="refund-item-checkbox" data-id="${item.id}" data-max-qty="${item.quantity}" data-unit-price="${item.rate}" data-original-amount="${item.amount}"></td>
-                            <td>${item.product_name}<br><small>${item.product_code}</small></td>
-                            <td>${item.client_size || '-'}</td>
-                            <td class="text-center">${item.quantity}</td>
-                            <td><input type="number" step="0.01" class="form-control refund-qty" data-id="${item.id}" disabled min="0" max="${item.quantity}" value="0"></td>
-                            <td class="text-right">${formatCurrency(item.rate)}</td>
-                            <td><input type="number" step="0.01" class="form-control refund-amount" data-id="${item.id}" disabled value="0"></td>
-                        </tr>`;
-                }
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="alert alert-warning" id="refundTotalAlert">
-                        Total Refund Amount: <strong>₨ 0.00</strong>
-                    </div>
-                `;
-                $('#refundModalBody').html(html);
-                
-                // Bind events
-                $('#selectAll').on('change', function(){
-                    $('.refund-item-checkbox').prop('checked', $(this).is(':checked')).trigger('change');
-                });
-                
-                $('.refund-item-checkbox').on('change', function(){
-                    var row = $(this).closest('tr');
-                    var qtyInput = row.find('.refund-qty');
-                    var amountInput = row.find('.refund-amount');
-                    if($(this).is(':checked')){
-                        qtyInput.prop('disabled', false);
-                        amountInput.prop('disabled', false);
-                        qtyInput.val(1);
-                        var unitPrice = parseFloat($(this).data('unit-price'));
-                        var amount = unitPrice * 1;
-                        amountInput.val(amount.toFixed(2));
-                    } else {
-                        qtyInput.prop('disabled', true).val(0);
-                        amountInput.prop('disabled', true).val(0);
-                    }
-                    calculateRefundTotal();
-                });
-                
-                $('.refund-qty').on('keyup change', function(){
-                    var row = $(this).closest('tr');
-                    var checkbox = row.find('.refund-item-checkbox');
-                    var maxQty = parseFloat(checkbox.data('max-qty'));
-                    var qty = parseFloat($(this).val()) || 0;
-                    if(qty > maxQty){
-                        qty = maxQty;
-                        $(this).val(qty);
-                    }
-                    var unitPrice = parseFloat(checkbox.data('unit-price'));
-                    var amount = qty * unitPrice;
-                    row.find('.refund-amount').val(amount.toFixed(2));
-                    calculateRefundTotal();
-                });
-                
-                $('.refund-amount').on('keyup change', function(){
-                    var row = $(this).closest('tr');
-                    var checkbox = row.find('.refund-item-checkbox');
-                    var amount = parseFloat($(this).val()) || 0;
-                    var unitPrice = parseFloat(checkbox.data('unit-price'));
-                    var qty = amount / unitPrice;
-                    row.find('.refund-qty').val(qty.toFixed(2));
-                    calculateRefundTotal();
-                });
-                
-            } else {
-                $('#refundModalBody').html('<div class="alert alert-danger">' + response.message + '</div>');
+            if(!response.success){
+                $('#viewSaleBody').html('<div class="alert alert-danger m-3"><i class="fas fa-exclamation-circle"></i> ' + (response.message || 'Failed to load sale') + '</div>');
+                return;
             }
+            
+            var s = response.sale;
+            var c = response.customer;
+            
+            var html = '';
+            html += '<div class="d-flex justify-content-between align-items-center mb-3">';
+            html += '<h5 class="mb-0"><strong>' + s.invoice_no + '</strong></h5>';
+            html += '<span class="badge badge-info" style="padding:6px 14px;border-radius:20px;font-size:12px;">' + s.status + '</span>';
+            html += '</div>';
+            
+            html += '<div class="row mb-3">';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + c.customer_name + '</div><small class="text-muted">' + c.customer_code + '</small></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + (c.mobile || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Sale Date</div><div class="view-info-value">' + s.sale_date + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Payment Method</div><div class="view-info-value">' + s.payment_type + '</div></div></div>';
+            html += '<div class="col-md-6 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + (c.address || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Reference No</div><div class="view-info-value">' + (s.reference_no || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Status</div><div class="view-info-value">' + (s.remaining_amount <= 0 ? 'Paid' : (s.received_amount > 0 ? 'Partial' : 'Pending')) + '</div></div></div>';
+            html += '</div>';
+            
+            if(response.items.length > 0){
+                html += '<div class="table-responsive"><table class="table table-bordered view-modal-table">';
+                html += '<thead><tr>';
+                html += '<th rowspan="2" width="5%">SR #</th><th colspan="2">ACTUAL SIZE</th>';
+                html += '<th rowspan="2" width="7%">QTY</th><th rowspan="2" width="11%">Total Area (sq ft)</th>';
+                html += '<th rowspan="2" width="18%">GLASS TYPE</th><th rowspan="2" width="8%">PRICE</th>';
+                html += '<th rowspan="2" width="12%">TOTAL PRICE</th>';
+                html += '</tr><tr class="size-subheader"><th width="9%">HEIGHT</th><th width="9%">WIDTH</th></tr></thead><tbody>';
+                
+                var totalArea = 0;
+                var totalPrice = 0;
+                for(var i = 0; i < response.items.length; i++){
+                    var item = response.items[i];
+                    var lineArea = parseFloat(item.area) || 0;
+                    var amount = parseFloat(item.amount) || 0;
+                    totalArea += lineArea;
+                    totalPrice += amount;
+                    html += '<tr>';
+                    html += '<td class="text-center">' + (i + 1) + '</td>';
+                    html += '<td class="text-center">' + (parseFloat(item.client_height) || 0) + '</td>';
+                    html += '<td class="text-center">' + (parseFloat(item.client_width) || 0) + '</td>';
+                    html += '<td class="text-center">' + (parseFloat(item.quantity) || 0) + '</td>';
+                    html += '<td class="text-right">' + formatCurrency(lineArea) + '</td>';
+                    html += '<td>' + (item.product_name || '-') + '</td>';
+                    html += '<td class="text-right">' + formatCurrency(item.rate) + '</td>';
+                    html += '<td class="text-right"><strong>' + formatCurrency(amount) + '</strong></td>';
+                    html += '</tr>';
+                }
+                html += '</tbody></table></div>';
+                
+                html += '<div class="row justify-content-end">';
+                html += '<div class="col-md-5">';
+                html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Subtotal</span><span class="view-total-value">' + formatCurrency(s.subtotal) + '</span></div>';
+                if(s.discount_amount > 0){
+                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Discount (' + s.discount_percentage + '%)</span><span class="view-total-value text-danger">- ' + formatCurrency(s.discount_amount) + '</span></div>';
+                }
+                if(s.other_charges > 0){
+                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Other Charges</span><span class="view-total-value">+ ' + formatCurrency(s.other_charges) + '</span></div>';
+                }
+                html += '<div class="view-info-card view-grand-total mb-2 d-flex justify-content-between p-3"><span class="view-total-label">Grand Total</span><span class="view-total-value">' + formatCurrency(s.grand_total) + '</span></div>';
+                html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Paid Amount</span><span class="view-total-value text-success">' + formatCurrency(s.received_amount) + '</span></div>';
+                html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Remaining</span><span class="view-total-value text-danger">' + formatCurrency(s.remaining_amount) + '</span></div>';
+                html += '</div></div>';
+            } else {
+                html += '<div class="alert alert-info">No products found for this sale.</div>';
+            }
+            
+            if(s.remarks){
+                html += '<div class="alert alert-warning mb-0"><strong>Remarks:</strong> ' + s.remarks + '</div>';
+            }
+            
+            $('#viewSaleBody').html(html);
+            $('#viewSaleFooter').html(
+                '<a href="add_sale.php?edit_id=' + s.id + '" class="btn btn-warning"><i class="fas fa-edit"></i> Edit</a>' +
+                '<a href="print_invoice.php?invoice_no=' + encodeURIComponent(s.invoice_no) + '" class="btn btn-primary" target="_blank"><i class="fas fa-print"></i> Print</a>' +
+                '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>'
+            );
         },
         error: function(){
-            $('#refundModalBody').html('<div class="alert alert-danger">Failed to load sale details!</div>');
+            $('#viewSaleBody').html('<div class="alert alert-danger m-3"><i class="fas fa-exclamation-circle"></i> Failed to load sale details</div>');
         }
     });
-}
-
-function calculateRefundTotal(){
-    var total = 0;
-    $('.refund-amount').each(function(){
-        var val = parseFloat($(this).val()) || 0;
-        total += val;
-    });
-    $('#refundTotalAlert').html('Total Refund Amount: <strong>' + formatCurrency(total) + '</strong>');
 }
 
 function formatCurrency(amount){
-    return '₨ ' + parseFloat(amount).toFixed(2);
+    return 'Rs ' + parseFloat(amount).toFixed(2);
 }
-
-$('#processRefundBtn').on('click', function(){
-    var saleId = $('#refund_sale_id').val();
-    var refundDate = $('#refund_date').val();
-    var refundReason = $('#refund_reason').val();
-    var refundItems = [];
-    var refundQuantities = [];
-    var refundAmounts = [];
-    
-    $('.refund-item-checkbox:checked').each(function(){
-        var row = $(this).closest('tr');
-        var qty = row.find('.refund-qty').val();
-        var amount = row.find('.refund-amount').val();
-        if(parseFloat(qty) > 0){
-            refundItems.push($(this).data('id'));
-            refundQuantities.push(qty);
-            refundAmounts.push(amount);
-        }
-    });
-    
-    if(refundItems.length === 0){
-        Swal.fire({ title: 'Error!', text: 'Please select at least one item to refund!', icon: 'error' });
-        return;
-    }
-    
-    if(!refundDate){
-        Swal.fire({ title: 'Error!', text: 'Please select refund date!', icon: 'error' });
-        return;
-    }
-    
-    Swal.fire({
-        title: 'Confirm Refund',
-        text: 'Are you sure you want to process this refund? This action cannot be undone.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ffc107',
-        confirmButtonText: 'Yes, Process Refund!'
-    }).then((result) => {
-        if(result.isConfirmed){
-            Swal.fire({ title: 'Processing...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-            
-            $.ajax({
-                url: 'refund_sale.php',
-                type: 'POST',
-                data: {
-                    refund_sale: 1,
-                    sale_id: saleId,
-                    refund_date: refundDate,
-                    refund_reason: refundReason,
-                    refund_items: refundItems,
-                    refund_quantities: refundQuantities,
-                    refund_amounts: refundAmounts
-                },
-                dataType: 'json',
-                success: function(response){
-                    if(response.success){
-                        Swal.fire({ title: 'Success!', text: response.message, icon: 'success', confirmButtonColor: '#1e7e34' }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire({ title: 'Error!', text: response.message, icon: 'error' });
-                    }
-                },
-                error: function(){
-                    Swal.fire({ title: 'Error!', text: 'Failed to process refund!', icon: 'error' });
-                }
-            });
-        }
-    });
-});
 </script>
 </body>
 </html>

@@ -163,19 +163,43 @@ if($all_sizes_result) {
             font-weight: bold;
             color: #0066cc;
         }
-        .status-badge-active {
-            background-color: #28a745;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 15px;
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 11px;
+            border-radius: 20px;
             font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            line-height: 1;
+            border: 1px solid transparent;
+        }
+        .status-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-badge-active {
+            background: linear-gradient(135deg, #eafaf1, #d4f5df);
+            color: #14532d;
+            border-color: #b7e4c7;
+            box-shadow: 0 1px 4px rgba(20, 83, 45, 0.12);
+        }
+        .status-badge-active .dot {
+            background: #16a34a;
+            box-shadow: 0 0 0 2.5px rgba(22, 163, 74, 0.2);
         }
         .status-badge-inactive {
-            background-color: #dc3545;
-            color: white;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 11px;
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            color: #7f1d1d;
+            border-color: #fecaca;
+            box-shadow: 0 1px 4px rgba(127, 29, 29, 0.12);
+        }
+        .status-badge-inactive .dot {
+            background: #dc2626;
+            box-shadow: 0 0 0 2.5px rgba(220, 38, 38, 0.18);
         }
         .filter-section {
             background: #f8f9fc;
@@ -213,6 +237,22 @@ if($all_sizes_result) {
             padding: 10px 15px;
             border-radius: 6px;
         }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header-custom, .table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -227,18 +267,18 @@ if($all_sizes_result) {
             <h1 class="h3 mb-0 text-gray-800">
                 <i class="fas fa-list text-success mr-2"></i> View Product List
             </h1>
-            <div>
+            <div class="no-print">
                 <a href="addproducts.php" class="btn btn-green">
                     <i class="fas fa-plus-circle mr-1"></i> Add New Product
                 </a>
-                <button type="button" class="btn btn-outline-success ml-2" onclick="window.print()">
+                <button type="button" class="btn btn-outline-success ml-2" onclick="window.open('print_product_list.php', '_blank', 'width=1200,height=750')">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
             </div>
         </div>
         
         <!-- Filter Section -->
-        <div class="card form-card">
+        <div class="card form-card no-print">
             <div class="card-header-custom">
                 <i class="fas fa-filter mr-2"></i> Filter Products
             </div>
@@ -387,9 +427,9 @@ if($all_sizes_result) {
                                 <td class="text-right"><?php echo formatCurrency($stock_value); ?></td>
                                 <td class="text-center">
                                     <?php if($product['status'] == 1): ?>
-                                        <span class="status-badge-active"><i class="fas fa-check-circle"></i> Active</span>
+                                        <span class="status-badge status-badge-active"><span class="dot"></span> Active</span>
                                     <?php else: ?>
-                                        <span class="status-badge-inactive"><i class="fas fa-times-circle"></i> Inactive</span>
+                                        <span class="status-badge status-badge-inactive"><span class="dot"></span> Inactive</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="action-buttons">

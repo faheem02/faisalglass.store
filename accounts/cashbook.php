@@ -105,6 +105,22 @@ $page_title = "Cash Book";
             background: linear-gradient(135deg, #1e7e34, #4e73df);
             color: white;
         }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card, .stat-card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header, .table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 
@@ -133,8 +149,8 @@ $page_title = "Cash Book";
                         <h1 class="h3 mb-0" style="color: #1e7e34;">
                             <i class="fas fa-money-bill-wave"></i> Cash Book
                         </h1>
-                        <div>
-                            <button onclick="window.print()" class="btn btn-secondary btn-sm">
+                        <div class="no-print">
+                            <button onclick="window.open('print_cashbook.php?from_date=<?php echo $from_date; ?>&to_date=<?php echo $to_date; ?>&filter_type=<?php echo urlencode($filter_type); ?>', '_blank', 'width=1000,height=750')" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-print"></i> Print
                             </button>
                             <button id="exportBtn" class="btn btn-success btn-sm">
@@ -172,7 +188,7 @@ $page_title = "Cash Book";
                     </div>
                     
                     <!-- Filters -->
-                    <div class="card shadow mb-4">
+                    <div class="card shadow mb-4 no-print">
                         <div class="card-header py-3">
                             <h6 class="m-0 font-weight-bold" style="color: #1e7e34;">
                                 <i class="fas fa-filter"></i> Filters

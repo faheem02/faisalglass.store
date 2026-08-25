@@ -41,9 +41,11 @@ if (session_status() === PHP_SESSION_NONE) {
  * @param float $amount Amount to format
  * @return string Formatted amount
  */
+if (!function_exists('formatCurrency')) {
 function formatCurrency($amount) {
     global $currency_symbol;
     return $currency_symbol . " " . number_format($amount, 2);
+}
 }
 
 /**
@@ -51,12 +53,14 @@ function formatCurrency($amount) {
  * @param string $date Date to format
  * @return string Formatted date
  */
+if (!function_exists('formatDate')) {
 function formatDate($date) {
     global $date_format;
     if ($date && $date != '0000-00-00') {
         return date($date_format, strtotime($date));
     }
     return '-';
+}
 }
 
 /**

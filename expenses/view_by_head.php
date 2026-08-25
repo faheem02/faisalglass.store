@@ -814,7 +814,7 @@ $headwise_result = mysqli_query($conn, $headwise_query);
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+                <button type="button" class="btn btn-primary" onclick="printExpenseReceipt()">Print</button>
             </div>
         </div>
     </div>
@@ -828,6 +828,7 @@ $headwise_result = mysqli_query($conn, $headwise_query);
 
 <script>
 var expensesTable;
+var currentExpenseId = 0;
 
 $(document).ready(function() {
     // Initialize DataTable
@@ -873,6 +874,7 @@ $(document).ready(function() {
 
 // View Expense Details
 function viewExpense(id) {
+    currentExpenseId = id;
     $.ajax({
         url: 'get_expense_details.php',
         type: 'GET',
@@ -885,6 +887,14 @@ function viewExpense(id) {
             Swal.fire({ title: 'Error!', text: 'Failed to load expense details!', icon: 'error', confirmButtonColor: '#1e7e34' });
         }
     });
+}
+
+function printExpenseReceipt() {
+    if(currentExpenseId === 0) {
+        Swal.fire({ title: 'Error!', text: 'No expense selected!', icon: 'error', confirmButtonColor: '#1e7e34' });
+        return;
+    }
+    window.open('print_expense_detail.php?id=' + currentExpenseId, '_blank', 'width=900,height=700');
 }
 
 // Confirm Delete

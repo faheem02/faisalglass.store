@@ -117,7 +117,21 @@ $current_balance = floatval($customer['current_balance']);
         .table thead th { background-color: #1e7e34; color: white; font-weight: 600; }
         .filter-section { background: #f8f9fc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .topbar { height: 60px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.08); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
-        @media print { .no-print { display: none !important; } }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card-header, .table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -137,7 +151,7 @@ $current_balance = floatval($customer['current_balance']);
                     <div class="d-sm-flex align-items-center justify-content-between mb-4 mt-3 no-print">
                         <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-book text-success mr-2"></i> Customer Ledger</h1>
                         <div>
-                            <button onclick="window.print()" class="btn btn-secondary btn-sm"><i class="fas fa-print"></i> Print</button>
+                            <button onclick="window.open('print_customer_ledger.php?id=<?php echo $customer_id; ?>&from_date=<?php echo urlencode($from_date); ?>&to_date=<?php echo urlencode($to_date); ?>', '_blank', 'width=1000,height=750')" class="btn btn-primary btn-sm"><i class="fas fa-print"></i> Print</button>
                             <button id="exportBtn" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Export</button>
                             <a href="receiving_amount.php?id=<?php echo $customer_id; ?>" class="btn btn-info btn-sm"><i class="fas fa-money-bill-wave"></i> Receive Payment</a>
                             <a href="customer_detail.php?id=<?php echo $customer_id; ?>" class="btn btn-primary btn-sm"><i class="fas fa-user"></i> Detail</a>

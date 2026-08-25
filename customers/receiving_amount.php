@@ -128,38 +128,46 @@ if(isset($_GET['receipt_id'])) {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #e6e9ef; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-size: 16px; font-family: 'Poppins', sans-serif; padding: 20px; }
+        body { background: #e6e9ef; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-size: 14px; font-family: 'Poppins', sans-serif; padding: 20px; color: #1e1e1e; }
         .toolbar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center; }
-        .toolbar button { padding: 10px 28px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; background: #1a2a3a; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .toolbar button { padding: 10px 28px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; background: #1a2a3a; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .toolbar button:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,0.2); }
         .toolbar button.pdf-btn { background: #c0392b; }
         .toolbar button.print-btn { background: #2c6e9c; }
         .toolbar button.back-btn { background: #1e7e34; }
         #receipt-wrapper { background: #ffffff; box-shadow: 0 12px 40px rgba(0,0,0,0.18); border-radius: 4px; padding: 12px; }
-        #receipt { width: 148mm; min-height: 210mm; background: #ffffff; padding: 10mm 8mm; font-size: 10.5px; line-height: 1.5; color: #1e1e1e; display: flex; flex-direction: column; position: relative; border: 1px solid #d0d4dc; border-radius: 2px; }
-        .brand-name { font-size: 28px; font-weight: 800; letter-spacing: 1.5px; color: #0b1e2e; text-transform: uppercase; line-height: 1.1; }
-        .brand-sub { font-size: 13px; font-weight: 600; color: #2c3e50; letter-spacing: 0.5px; margin-top: 1px; }
-        .brand-contact { font-size: 10.5px; color: #34495e; margin-top: 2px; }
-        .brand-address { font-size: 10px; color: #4a5a6a; margin-top: 1px; }
-        .section-title { font-size: 14px; font-weight: 700; color: #0b1e2e; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #0b1e2e; padding-bottom: 3px; margin: 12px 0 8px 0; }
+        #receipt { width: 148mm; min-height: 210mm; background: #ffffff; padding: 12mm 10mm; font-size: 11.5px; line-height: 1.6; color: #1e1e1e; display: flex; flex-direction: column; position: relative; border: 1px solid #d0d4dc; border-radius: 2px; }
+
+        /* Header */
+        .receipt-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 2px solid #0b1e2e; padding-bottom: 8px; margin-bottom: 6px; }
+        .brand-name { font-size: 26px; font-weight: 800; letter-spacing: 1.5px; color: #0b1e2e; text-transform: uppercase; line-height: 1.1; }
+        .brand-sub { font-size: 12px; font-weight: 600; color: #2c3e50; letter-spacing: 0.5px; margin-top: 1px; }
+        .brand-contact { font-size: 10px; color: #34495e; margin-top: 2px; }
+        .brand-address { font-size: 9.5px; color: #4a5a6a; margin-top: 1px; }
+        .receipt-no-badge { text-align: center; background: #0b1e2e; color: #fff; padding: 7px 12px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; line-height: 1.4; white-space: nowrap; }
+        .receipt-no-badge .badge-num { font-size: 14px; font-weight: 800; }
+
+        .receipt-title { text-align: center; margin: 12px 0 2px; font-size: 16px; font-weight: 800; letter-spacing: 4px; color: #0b1e2e; text-transform: uppercase; }
+
+        .section-title { font-size: 13px; font-weight: 700; color: #0b1e2e; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #0b1e2e; padding-bottom: 3px; margin: 12px 0 8px 0; }
         .section-title:first-of-type { margin-top: 8px; }
-        .field-label { font-weight: 600; color: #1e2f3f; display: inline-block; min-width: 120px; }
-        .field-value { font-weight: 400; color: #1e1e1e; }
-        .field-row { margin: 3px 0; display: flex; align-items: baseline; flex-wrap: wrap; }
-        .field-row .field-label { min-width: 120px; }
+        .field-label { font-weight: 600; color: #5a6a7a; font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase; }
+        .field-value { font-weight: 500; color: #1e1e1e; text-align: right; font-variant-numeric: tabular-nums; }
+        .field-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 4px 0; border-bottom: 1px dotted #dde3ea; }
+        .amount-row .field-value { font-size: 20px; font-weight: 800; color: #0b1e2e; }
         .method-group { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 2px; align-items: center; }
         .method-item { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: #1e2f3f; }
         .method-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: #0b1e2e; cursor: default; pointer-events: none; margin: 0; }
-        .received-by { margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 6px; border-top: 2px solid #0b1e2e; }
-        .received-left .company-name { font-size: 14px; font-weight: 700; color: #0b1e2e; }
-        .received-left .company-sub { font-size: 10px; color: #2c3e50; }
+        .received-by { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 8px; border-top: 2px solid #0b1e2e; }
+        .received-left .company-name { font-size: 13px; font-weight: 700; color: #0b1e2e; }
+        .received-left .company-sub { font-size: 9.5px; color: #2c3e50; }
         .signature-area { text-align: center; min-width: 100px; }
         .signature-area .sig-label { font-size: 10px; color: #4a5a6a; border-top: 1px solid #4a5a6a; padding-top: 2px; min-width: 100px; }
         .signature-area .sig-company { font-size: 10px; font-weight: 600; color: #0b1e2e; margin-top: 2px; }
-        .footer { margin-top: auto; padding-top: 10px; text-align: center; border-top: 1px solid #d0d4dc; }
+        .footer { margin-top: 12px; padding-top: 8px; text-align: center; border-top: 1px solid #d0d4dc; }
         .footer .thankyou { font-size: 13px; font-weight: 700; color: #0b1e2e; letter-spacing: 0.5px; }
-        .footer .generated { font-size: 9px; color: #6a7a8a; margin-top: 2px; font-style: italic; }
-        @media print { body { background: #fff; padding: 0; margin: 0; display: block; } .toolbar { display: none !important; } #receipt-wrapper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; } #receipt { width: 148mm; min-height: 210mm; padding: 10mm 8mm; border: none; border-radius: 0; box-shadow: none; margin: 0 auto; } .method-item input[type="checkbox"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .brand-name, .section-title, .received-left .company-name, .footer .thankyou { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        .footer .generated { font-size: 8.5px; color: #6a7a8a; margin-top: 2px; font-style: italic; }
+        @media print { body { background: #fff; padding: 0; margin: 0; display: block; } .toolbar { display: none !important; } #receipt-wrapper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; } #receipt { width: 148mm; min-height: 210mm; padding: 10mm 8mm; border: none; border-radius: 0; box-shadow: none; margin: 0 auto; } .receipt-no-badge, .brand-name, .section-title, .received-left .company-name, .footer .thankyou { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     </style>
 </head>
 <body>
@@ -171,12 +179,17 @@ if(isset($_GET['receipt_id'])) {
 
     <div id="receipt-wrapper">
         <div id="receipt">
-            <div>
-                <div class="brand-name">FAISAL GLASS</div>
-                <div class="brand-sub">DEALERS OF GHANI GLASS LIMITED</div>
-                <div class="brand-contact">📞 0321-4186775</div>
-                <div class="brand-address">📍 Lajna Chowk Collage Road Township Lahore</div>
+            <div class="receipt-header">
+                <div>
+                    <div class="brand-name">FAISAL GLASS</div>
+                    <div class="brand-sub">DEALERS OF GHANI GLASS LIMITED</div>
+                    <div class="brand-contact">📞 0321-4186775</div>
+                    <div class="brand-address">📍 Lajna Chowk Collage Road Township Lahore</div>
+                </div>
+                <div class="receipt-no-badge">Receipt No.<br><span class="badge-num">RCP-<?php echo str_pad($receipt['id'], 4, '0', STR_PAD_LEFT); ?></span></div>
             </div>
+
+            <div class="receipt-title">PAYMENT RECEIPT</div>
 
             <div class="section-title">RECEIVED FROM</div>
             <div class="field-row">
@@ -194,10 +207,6 @@ if(isset($_GET['receipt_id'])) {
                 <span class="field-value"><?php echo date('d-m-Y', strtotime($receipt['receipt_date'])); ?></span>
             </div>
             <div class="field-row">
-                <span class="field-label">Receipt #</span>
-                <span class="field-value">RCP-<?php echo str_pad($receipt['id'], 4, '0', STR_PAD_LEFT); ?></span>
-            </div>
-            <div class="field-row">
                 <span class="field-label">Payment Method</span>
                 <span class="field-value" style="font-weight:600;text-transform:uppercase;"><?php echo htmlspecialchars($receipt['payment_method']); ?></span>
             </div>
@@ -207,9 +216,9 @@ if(isset($_GET['receipt_id'])) {
                 <span class="field-value"><?php echo htmlspecialchars($receipt['reference_no']); ?></span>
             </div>
             <?php endif; ?>
-            <div class="field-row">
+            <div class="field-row amount-row">
                 <span class="field-label">Amount Received</span>
-                <span class="field-value" style="font-size:15px; font-weight:700; color:#0b1e2e;">Rs. <?php echo $display_amount; ?></span>
+                <span class="field-value">Rs. <?php echo $display_amount; ?></span>
             </div>
             <?php if(!empty($receipt['remarks'])): ?>
             <div class="field-row">

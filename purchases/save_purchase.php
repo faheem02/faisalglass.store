@@ -31,6 +31,8 @@ if(isset($_POST['save_purchase'])) {
     $bank_account_id = isset($_POST['bank_account_id']) ? intval($_POST['bank_account_id']) : 0;
     $reference_no = mysqli_real_escape_string($conn, trim($_POST['reference_no']));
     $remarks = mysqli_real_escape_string($conn, trim($_POST['remarks']));
+    $edit_id = isset($_POST['edit_id']) ? intval($_POST['edit_id']) : 0;
+    $invoice_no = isset($_POST['invoice_no']) ? mysqli_real_escape_string($conn, trim($_POST['invoice_no'])) : '';
     
     // Get products data
     $product_ids = $_POST['product_id'];
@@ -65,33 +67,101 @@ if(isset($_POST['save_purchase'])) {
         mysqli_begin_transaction($conn);
         
         try {
-            // Generate invoice number
-            $prefix = "PUR";
-            $inv_query = "SELECT invoice_no FROM purchase_master WHERE invoice_no LIKE '{$prefix}%' ORDER BY id DESC LIMIT 1";
-            $inv_result = mysqli_query($conn, $inv_query);
-            if($inv_result && mysqli_num_rows($inv_result) > 0) {
-                $row = mysqli_fetch_assoc($inv_result);
-                $last_no = $row['invoice_no'];
-                $number = intval(substr($last_no, 4)) + 1;
-                $invoice_no = $prefix . "-" . str_pad($number, 5, '0', STR_PAD_LEFT);
+            // Edit mode: reverse old entries before re-posting
+            $old_supplier_id = 0;
+            $old_invoice_no = '';
+            if ($edit_id > 0) {
+                $old_query = "SELECT * FROM purchase_master WHERE id = $edit_id";
+                $old_result = mysqli_query($conn, $old_query);
+                if ($old_result && mysqli_num_rows($old_result) > 0) {
+                    $old_master = mysqli_fetch_assoc($old_result);
+                    $old_supplier_id = intval($old_master['supplier_id']);
+                    $old_invoice_no = $old_master['invoice_no'];
+                }
+                
+                $old_details_query = "SELECT * FROM purchase_details WHERE purchase_id = $edit_id";
+                $old_details_result = mysqli_query($conn, $old_details_query);
+                while ($old_detail = mysqli_fetch_assoc($old_details_result)) {
+                    $old_total_area = floatval($old_detail['area']) * floatval($old_detail['quantity']);
+                    $stock_query = "SELECT balance_qty FROM inventory_ledger WHERE product_id = {$old_detail['product_id']} ORDER BY id DESC LIMIT 1";
+                    $stock_result = mysqli_query($conn, $stock_query);
+                    $current_stock = 0;
+                    if ($stock_result && mysqli_num_rows($stock_result) > 0) {
+                        $stock_data = mysqli_fetch_assoc($stock_result);
+                        $current_stock = floatval($stock_data['balance_qty']);
+                    }
+                    $new_stock = $current_stock - $old_total_area;
+                    $reversal_query = "INSERT INTO inventory_ledger (date, product_id, reference_type, reference_id, 
+                                        qty_in, qty_out, balance_qty, unit_price, total_amount, remarks) 
+                                        VALUES (CURDATE(), {$old_detail['product_id']}, 'ADJUSTMENT', $edit_id, 
+                                        0, '$old_total_area', '$new_stock', {$old_detail['unit_price']}, 0, 
+                                        'Purchase Edited: $old_invoice_no')";
+                    mysqli_query($conn, $reversal_query);
+                    mysqli_query($conn, "DELETE FROM inventory_ledger WHERE reference_type = 'PURCHASE' AND reference_id = $edit_id AND product_id = {$old_detail['product_id']}");
+                }
+                
+                mysqli_query($conn, "DELETE FROM purchase_details WHERE purchase_id = $edit_id");
+                mysqli_query($conn, "DELETE FROM supplier_ledger WHERE reference_type = 'PURCHASE' AND reference_id = $edit_id");
+                mysqli_query($conn, "DELETE FROM cash_book WHERE reference_type = 'PURCHASE' AND reference_id = $edit_id");
+                mysqli_query($conn, "DELETE FROM bank_book WHERE reference_type = 'PURCHASE' AND reference_id = $edit_id");
+                
+                if ($old_supplier_id > 0) {
+                    $supplier_balance_query = "SELECT SUM(credit) - SUM(debit) as balance FROM supplier_ledger WHERE supplier_id = $old_supplier_id";
+                    $supplier_balance_result = mysqli_query($conn, $supplier_balance_query);
+                    $recomputed_balance = 0;
+                    if ($supplier_balance_result && mysqli_num_rows($supplier_balance_result) > 0) {
+                        $bal_data = mysqli_fetch_assoc($supplier_balance_result);
+                        $recomputed_balance = floatval($bal_data['balance']);
+                    }
+                    mysqli_query($conn, "UPDATE suppliers SET current_balance = $recomputed_balance WHERE id = $old_supplier_id");
+                }
+            }
+            
+            // Invoice number: reuse existing when editing, otherwise generate a new one
+            if ($edit_id > 0 && $invoice_no != '') {
+                $use_invoice_no = $invoice_no;
             } else {
-                $invoice_no = $prefix . "-00001";
+                $prefix = "PUR";
+                $inv_query = "SELECT invoice_no FROM purchase_master WHERE invoice_no LIKE '{$prefix}%' ORDER BY id DESC LIMIT 1";
+                $inv_result = mysqli_query($conn, $inv_query);
+                if($inv_result && mysqli_num_rows($inv_result) > 0) {
+                    $row = mysqli_fetch_assoc($inv_result);
+                    $last_no = $row['invoice_no'];
+                    $number = intval(substr($last_no, 4)) + 1;
+                    $use_invoice_no = $prefix . "-" . str_pad($number, 5, '0', STR_PAD_LEFT);
+                } else {
+                    $use_invoice_no = $prefix . "-00001";
+                }
             }
+            $invoice_no = $use_invoice_no;
             
-            // Insert into purchase_master
-            $insert_master = "INSERT INTO purchase_master (invoice_no, purchase_date, supplier_id, subtotal, 
-                              discount_percentage, discount_amount, other_charges, grand_total, paid_amount, 
-                              remaining_amount, payment_type, bank_account_id, reference_no, remarks, created_by) 
-                              VALUES ('$invoice_no', '$purchase_date', '$supplier_id', '$subtotal', 
-                              '$discount_percentage', '$discount_amount', '$other_charges', '$grand_total', 
-                              '$paid_amount', '$remaining_amount', '$payment_type', '$bank_account_id', 
-                              '$reference_no', '$remarks', '{$_SESSION['user_id']}')";
-            
-            if(!mysqli_query($conn, $insert_master)) {
-                throw new Exception("Failed to save purchase invoice: " . mysqli_error($conn));
+            // Save into purchase_master (UPDATE when editing, INSERT otherwise)
+            if ($edit_id > 0) {
+                $save_master = "UPDATE purchase_master SET invoice_no = '$invoice_no', purchase_date = '$purchase_date', 
+                                supplier_id = '$supplier_id', subtotal = '$subtotal', discount_percentage = '$discount_percentage', 
+                                discount_amount = '$discount_amount', other_charges = '$other_charges', grand_total = '$grand_total', 
+                                paid_amount = '$paid_amount', remaining_amount = '$remaining_amount', payment_type = '$payment_type', 
+                                bank_account_id = '$bank_account_id', reference_no = '$reference_no', remarks = '$remarks' 
+                                WHERE id = $edit_id";
+                if(!mysqli_query($conn, $save_master)) {
+                    throw new Exception("Failed to update purchase invoice: " . mysqli_error($conn));
+                }
+                $purchase_id = $edit_id;
+            } else {
+                $insert_master = "INSERT INTO purchase_master (invoice_no, purchase_date, supplier_id, subtotal, 
+                                  discount_percentage, discount_amount, other_charges, grand_total, paid_amount, 
+                                  remaining_amount, payment_type, bank_account_id, reference_no, remarks, created_by) 
+                                  VALUES ('$invoice_no', '$purchase_date', '$supplier_id', '$subtotal', 
+                                  '$discount_percentage', '$discount_amount', '$other_charges', '$grand_total', 
+                                  '$paid_amount', '$remaining_amount', '$payment_type', '$bank_account_id', 
+                                  '$reference_no', '$remarks', '{$_SESSION['user_id']}')";
+                
+                if(!mysqli_query($conn, $insert_master)) {
+                    throw new Exception("Failed to save purchase invoice: " . mysqli_error($conn));
+                }
+                
+                $purchase_id = mysqli_insert_id($conn);
             }
-            
-            $purchase_id = mysqli_insert_id($conn);
             
             // Insert purchase details and update inventory
             for($i = 0; $i < count($product_ids); $i++) {
@@ -207,7 +277,7 @@ if(isset($_POST['save_purchase'])) {
             mysqli_commit($conn);
             
             $response['success'] = true;
-            $response['message'] = "Purchase invoice created successfully!";
+            $response['message'] = $edit_id > 0 ? "Purchase invoice updated successfully!" : "Purchase invoice created successfully!";
             $response['invoice_no'] = $invoice_no;
             
         } catch (Exception $e) {

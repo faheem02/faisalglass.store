@@ -167,6 +167,23 @@ $employees_result = mysqli_query($conn, $employees_query);
             font-weight: bold;
             color: #1e7e34;
         }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header-custom, .table thead th,
+            .status-badge-active, .status-badge-inactive {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -181,11 +198,11 @@ $employees_result = mysqli_query($conn, $employees_query);
             <h1 class="h3 mb-0 text-gray-800">
                 <i class="fas fa-users text-success mr-2"></i> View Employee Ledger
             </h1>
-            <div>
+            <div class="no-print">
                 <a href="add_employee.php" class="btn btn-green">
                     <i class="fas fa-plus-circle mr-1"></i> Add New Employee
                 </a>
-                <button type="button" class="btn btn-outline-success ml-2" onclick="window.print()">
+                <button type="button" class="btn btn-outline-success ml-2" onclick="window.open('print_employee_list.php', '_blank', 'width=1000,height=750')">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-outline-info ml-2" id="exportBtn">
@@ -312,7 +329,7 @@ $employees_result = mysqli_query($conn, $employees_query);
         </div>
         
         <!-- Filter Section -->
-        <div class="card form-card">
+        <div class="card form-card no-print">
             <div class="card-header-custom">
                 <i class="fas fa-filter mr-2"></i> Filter Employees
             </div>

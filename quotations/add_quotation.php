@@ -179,10 +179,44 @@ $products_query = "SELECT p.*, c.category_name, u.short_name as unit_name, u.id 
                    ORDER BY p.product_name";
 $products_result = mysqli_query($conn, $products_query);
 
+// Load an existing quotation for editing via ?edit_id=N
+$edit_load_id = isset($_GET['edit_id']) ? intval($_GET['edit_id']) : 0;
+$form_load_data = null;
+
+if ($edit_load_id > 0) {
+    $page_title = "Edit Quotation";
+    $edit_master_res = mysqli_query($conn, "SELECT * FROM quotation_master WHERE id = $edit_load_id");
+    if ($edit_master_res && mysqli_num_rows($edit_master_res) > 0) {
+        $edit_master = mysqli_fetch_assoc($edit_master_res);
+        $edit_details_res = mysqli_query($conn, "SELECT * FROM quotation_details WHERE quotation_id = $edit_load_id");
+        $edit_products = [];
+        if ($edit_details_res) {
+            while ($ed = mysqli_fetch_assoc($edit_details_res)) {
+                $ed['area_per_unit'] = floatval($ed['area']);
+                $edit_products[] = $ed;
+            }
+        }
+        $form_load_data = [
+            'quotation_id' => intval($edit_master['id']),
+            'quotation_no' => $edit_master['quotation_no'],
+            'customer_id' => intval($edit_master['customer_id']),
+            'quotation_date' => $edit_master['quotation_date'],
+            'valid_until' => $edit_master['valid_until'],
+            'reference_no' => $edit_master['reference_no'],
+            'subtotal' => $edit_master['subtotal'],
+            'discount_percentage' => $edit_master['discount_percentage'],
+            'discount_amount' => $edit_master['discount_amount'],
+            'other_charges' => $edit_master['other_charges'],
+            'grand_total' => $edit_master['grand_total'],
+            'remarks' => $edit_master['remarks'],
+            'products' => $edit_products
+        ];
+    }
+}
+
 // Load a Hold Quotation directly via ?load_hold_id=N (used by modal "Load" button)
 $hold_load_id = isset($_GET['load_hold_id']) ? intval($_GET['load_hold_id']) : 0;
-$hold_load_data = null;
-if ($hold_load_id > 0) {
+if ($hold_load_id > 0 && $form_load_data === null) {
     $page_title = "Add Quotation (Loading Hold Quotation)";
     $hold_res = mysqli_query($conn, "SELECT * FROM hold_quotations_master WHERE id = $hold_load_id AND status = 'hold'");
     if ($hold_res && mysqli_num_rows($hold_res) > 0) {
@@ -195,9 +229,9 @@ if ($hold_load_id > 0) {
                 $hold_products[] = $hd;
             }
         }
-        $hold_load_data = [
-            'hold_id' => $hold_master['id'],
-            'customer_id' => $hold_master['customer_id'],
+        $form_load_data = [
+            'hold_id' => intval($hold_master['id']),
+            'customer_id' => intval($hold_master['customer_id']),
             'quotation_date' => $hold_master['hold_date'],
             'valid_until' => $hold_master['valid_until'],
             'reference_no' => $hold_master['reference_no'],
@@ -259,7 +293,7 @@ if ($hold_load_id > 0) {
                 
                 <div class="d-sm-flex align-items-center justify-content-between mb-4 mt-3">
                     <h1 class="h3 mb-0" style="color: #1e7e34;">
-                        <i class="fas fa-file-alt text-success mr-2"></i> Add Quotation
+                        <i class="fas fa-file-alt text-success mr-2"></i> <?php echo $edit_load_id > 0 ? 'Edit Quotation' : 'Add Quotation'; ?>
                     </h1>
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="../dashboard/dashboard.php">Dashboard</a></li>
@@ -566,8 +600,8 @@ if ($hold_load_id > 0) {
 <script>
 let productCount = 1;
 
-// Hold quotation data passed via ?load_hold_id=N (from modal "Load" button)
-const holdLoadData = <?php echo json_encode($hold_load_data); ?>;
+// Data passed via ?edit_id=N or ?load_hold_id=N to pre-fill the form
+const formLoadData = <?php echo json_encode($form_load_data); ?>;
 
 function calculateArea(height, width) {
     if (height > 0 && width > 0) {
@@ -825,11 +859,20 @@ $(document).ready(function() {
         });
     }
     
-    // Populate the quotation form from a hold payload (shared by modal load + ?load_hold_id)
+    // Populate the quotation form from a quotation or hold payload (shared by modal load, ?load_hold_id and ?edit_id)
     function populateQuotationForm(res) {
         $('#hold_id').remove();
-        $('<input>').attr({ type: 'hidden', id: 'hold_id', name: 'hold_id', value: res.hold_id }).appendTo('#quotationForm');
+        $('#edit_id').remove();
+        if(res.quotation_id) {
+            $('<input>').attr({ type: 'hidden', id: 'edit_id', name: 'edit_id', value: res.quotation_id }).appendTo('#quotationForm');
+        } else if(res.hold_id) {
+            $('<input>').attr({ type: 'hidden', id: 'hold_id', name: 'hold_id', value: res.hold_id }).appendTo('#quotationForm');
+        }
         
+        if(res.quotation_no) {
+            $('#quotation_no_display').val(res.quotation_no);
+            $('#quotation_no').val(res.quotation_no);
+        }
         if(res.customer_id) $('#customer_id').val(res.customer_id).trigger('change');
         if(res.quotation_date) $('input[name="quotation_date"]').val(res.quotation_date);
         if(res.valid_until) $('input[name="valid_until"]').val(res.valid_until);
@@ -984,9 +1027,9 @@ $(document).ready(function() {
         });
     });
     
-    // Auto-load hold quotation passed via ?load_hold_id=N
-    if(holdLoadData) {
-        populateQuotationForm(holdLoadData);
+    // Auto-load quotation/hold data passed via ?edit_id=N or ?load_hold_id=N
+    if(formLoadData) {
+        populateQuotationForm(formLoadData);
     }
     
     function submitQuotation(actionLabel) {

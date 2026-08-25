@@ -445,16 +445,16 @@ $page_title = "View Customers";
                                                 // Determine current balance display and class
                                                 if($current_balance > 0) {
                                                     $balance_display = '₨ ' . number_format($current_balance, 2);
-                                                    $balance_class = 'badge-receivable';
-                                                    $balance_text = 'Receivable';
+                                                    $balance_suffix = ' <small class="font-weight-bold">DR</small>';
+                                                    $balance_color_class = 'text-danger';
                                                 } elseif($current_balance < 0) {
                                                     $balance_display = '₨ ' . number_format(abs($current_balance), 2);
-                                                    $balance_class = 'badge-payable';
-                                                    $balance_text = 'Payable';
+                                                    $balance_suffix = ' <small class="font-weight-bold">CR</small>';
+                                                    $balance_color_class = 'text-success';
                                                 } else {
                                                     $balance_display = '₨ 0.00';
-                                                    $balance_class = 'badge-secondary';
-                                                    $balance_text = 'Settled';
+                                                    $balance_suffix = '';
+                                                    $balance_color_class = '';
                                                 }
                                                 
                                                 $status_class = ($row['status'] == 1) ? 'badge-active' : 'badge-inactive';
@@ -469,11 +469,8 @@ $page_title = "View Customers";
                                             <td><?php echo htmlspecialchars($row['company_name'] ?? '—'); ?></td>
                                             <td><?php echo htmlspecialchars($row['mobile']); ?></td>
                                             <td class="text-right"><?php echo $opening_display; ?></td>
-                                            <td class="text-center">
-                                                <span class="<?php echo $balance_class; ?>">
-                                                    <?php echo $balance_display; ?><br>
-                                                    <small><?php echo $balance_text; ?></small>
-                                                </span>
+                                            <td class="text-right font-weight-bold balance-cell <?php echo $balance_color_class; ?>" data-balance="<?php echo $current_balance; ?>">
+                                                <?php echo $balance_display; ?><?php echo $balance_suffix; ?>
                                             </td>
                                             <td class="text-center">
                                                 <span class="<?php echo $status_class; ?>">
@@ -523,7 +520,7 @@ $page_title = "View Customers";
                                     <tfoot>
                                         <tr style="background: #f8f9fc; font-weight: bold;">
                                             <th colspan="6" class="text-right">Grand Total:</th>
-                                            <th class="text-center" id="totalBalance">0.00</th>
+                                            <th class="text-right" id="totalBalance">0.00</th>
                                             <th colspan="2"></th>
                                         </tr>
                                     </tfoot>
@@ -595,22 +592,17 @@ $page_title = "View Customers";
             function calculateTotal() {
                 var total = 0;
                 $('#customersTable tbody tr').each(function() {
-                    var balanceSpan = $(this).find('td:eq(6) .badge-receivable, td:eq(6) .badge-payable, td:eq(6) .badge-secondary');
-                    var balanceText = balanceSpan.text().trim();
-                    var amount = parseFloat(balanceText.replace('₨', '').replace('Receivable', '').replace('Payable', '').replace('Settled', '')) || 0;
-                    
-                    if(balanceSpan.hasClass('badge-payable')) {
-                        amount = -amount;
-                    }
+                    var balanceCell = $(this).find('td.balance-cell');
+                    var amount = parseFloat(balanceCell.data('balance')) || 0;
                     total += amount;
                 });
                 
                 if(total > 0) {
-                    $('#totalBalance').html('<span class="badge-receivable" style="font-size: 14px;">₨ ' + total.toFixed(2) + ' (Total Receivable)</span>');
+                    $('#totalBalance').html('<span class="text-danger">₨ ' + total.toFixed(2) + ' (Total Receivable)</span>');
                 } else if(total < 0) {
-                    $('#totalBalance').html('<span class="badge-payable" style="font-size: 14px;">₨ ' + Math.abs(total).toFixed(2) + ' (Total Payable)</span>');
+                    $('#totalBalance').html('<span class="text-success">₨ ' + Math.abs(total).toFixed(2) + ' (Total Payable)</span>');
                 } else {
-                    $('#totalBalance').html('<span class="badge-secondary" style="font-size: 14px;">₨ 0.00 (Settled)</span>');
+                    $('#totalBalance').html('₨ 0.00');
                 }
             }
             
@@ -636,9 +628,6 @@ $page_title = "View Customers";
                             var text = $(this).text().trim();
                             if(index === 2) {
                                 text = $(this).find('strong').text().trim();
-                            }
-                            if(index === 6) {
-                                text = $(this).find('span').first().text().trim();
                             }
                             row.push(text);
                         }

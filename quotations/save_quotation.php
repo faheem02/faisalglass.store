@@ -40,23 +40,90 @@ if(isset($_POST['save_quotation'])) {
     // If this quotation was loaded from a hold quotation, the hold is removed after a successful save
     $hold_id = isset($_POST['hold_id']) ? intval($_POST['hold_id']) : 0;
     
+    // If editing an existing quotation, the old stock/ledger entries are reversed first
+    $edit_id = isset($_POST['edit_id']) ? intval($_POST['edit_id']) : 0;
+    
     // Start transaction
     mysqli_begin_transaction($conn);
     
     try {
-        // Insert into quotation_master with status
-        $insert_master = "INSERT INTO quotation_master (quotation_no, quotation_date, customer_id, valid_until, 
-                          subtotal, discount_percentage, discount_amount, other_charges, grand_total, 
-                          reference_no, remarks, status, created_by, created_at) 
-                          VALUES ('$quotation_no', '$quotation_date', $customer_id, $valid_until, 
-                          $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, 
-                          '$reference_no', '$remarks', '$status', $created_by, NOW())";
-        
-        if(!mysqli_query($conn, $insert_master)) {
-            throw new Exception("Failed to save quotation: " . mysqli_error($conn));
+        // EDIT MODE: reverse the old quotation's stock + ledger before re-posting
+        if($edit_id > 0) {
+            $old_master_q = mysqli_query($conn, "SELECT * FROM quotation_master WHERE id = $edit_id");
+            $old_master = ($old_master_q && mysqli_num_rows($old_master_q) > 0) ? mysqli_fetch_assoc($old_master_q) : null;
+            if(!$old_master) {
+                throw new Exception("Quotation to edit not found");
+            }
+            
+            // 1. Restore stock consumed by the old quotation + remove old QUOTATION stock entries
+            $old_det_q = mysqli_query($conn, "SELECT product_id, area, quantity FROM quotation_details WHERE quotation_id = $edit_id");
+            if($old_det_q === false) {
+                throw new Exception("Failed to read old quotation details: " . mysqli_error($conn));
+            }
+            while($old_det = mysqli_fetch_assoc($old_det_q)) {
+                $pid = intval($old_det['product_id']);
+                $total_area = floatval($old_det['area']) * floatval($old_det['quantity']);
+                
+                $posted_q = mysqli_query($conn, "SELECT id FROM inventory_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $edit_id AND product_id = $pid LIMIT 1");
+                $posted = ($posted_q && mysqli_num_rows($posted_q) > 0);
+                
+                if($posted) {
+                    $stock_q = mysqli_query($conn, "SELECT balance_qty FROM inventory_ledger WHERE product_id = $pid ORDER BY id DESC LIMIT 1");
+                    $cur = 0;
+                    if($stock_q && mysqli_num_rows($stock_q) > 0) {
+                        $cur = floatval(mysqli_fetch_assoc($stock_q)['balance_qty']);
+                    }
+                    $new_stock = $cur + $total_area;
+                    if(!mysqli_query($conn, "INSERT INTO inventory_ledger (date, product_id, reference_type, reference_id, qty_in, qty_out, balance_qty, unit_price, total_amount, remarks) VALUES (CURDATE(), $pid, 'ADJUSTMENT', $edit_id, $total_area, 0, $new_stock, 0, 0, 'Quotation Edit Stock Restore')")) {
+                        throw new Exception("Failed to restore stock: " . mysqli_error($conn));
+                    }
+                    if(!mysqli_query($conn, "DELETE FROM inventory_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $edit_id AND product_id = $pid")) {
+                        throw new Exception("Failed to clean quotation stock entries: " . mysqli_error($conn));
+                    }
+                }
+            }
+            
+            // 2. Remove old customer ledger entries + recompute customer balance
+            $old_customer_id = intval($old_master['customer_id']);
+            if(!mysqli_query($conn, "DELETE FROM customer_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $edit_id")) {
+                throw new Exception("Failed to remove old ledger entry: " . mysqli_error($conn));
+            }
+            $bal_q = mysqli_query($conn, "SELECT COALESCE(SUM(debit) - SUM(credit), 0) as balance FROM customer_ledger WHERE customer_id = $old_customer_id");
+            $old_bal = 0;
+            if($bal_q && mysqli_num_rows($bal_q) > 0) {
+                $old_bal = floatval(mysqli_fetch_assoc($bal_q)['balance']);
+            }
+            if(!mysqli_query($conn, "UPDATE customers SET current_balance = $old_bal WHERE id = $old_customer_id")) {
+                throw new Exception("Failed to update customer balance: " . mysqli_error($conn));
+            }
+            
+            // 3. Remove old product details (re-inserted below)
+            if(!mysqli_query($conn, "DELETE FROM quotation_details WHERE quotation_id = $edit_id")) {
+                throw new Exception("Failed to remove old quotation details: " . mysqli_error($conn));
+            }
         }
         
-        $quotation_id = mysqli_insert_id($conn);
+        // Save master (update when editing, otherwise insert)
+        if($edit_id > 0) {
+            $update_master = "UPDATE quotation_master SET quotation_no = '$quotation_no', quotation_date = '$quotation_date', customer_id = $customer_id, valid_until = $valid_until, subtotal = $subtotal, discount_percentage = $discount_percentage, discount_amount = $discount_amount, other_charges = $other_charges, grand_total = $grand_total, reference_no = '$reference_no', remarks = '$remarks', status = '$status' WHERE id = $edit_id";
+            if(!mysqli_query($conn, $update_master)) {
+                throw new Exception("Failed to update quotation: " . mysqli_error($conn));
+            }
+            $quotation_id = $edit_id;
+        } else {
+            $insert_master = "INSERT INTO quotation_master (quotation_no, quotation_date, customer_id, valid_until, 
+                              subtotal, discount_percentage, discount_amount, other_charges, grand_total, 
+                              reference_no, remarks, status, created_by, created_at) 
+                              VALUES ('$quotation_no', '$quotation_date', $customer_id, $valid_until, 
+                              $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, 
+                              '$reference_no', '$remarks', '$status', $created_by, NOW())";
+            
+            if(!mysqli_query($conn, $insert_master)) {
+                throw new Exception("Failed to save quotation: " . mysqli_error($conn));
+            }
+            
+            $quotation_id = mysqli_insert_id($conn);
+        }
         
         // Get arrays from POST
         $product_ids = $_POST['product_id'];
@@ -180,7 +247,7 @@ if(isset($_POST['save_quotation'])) {
         
         echo json_encode([
             'success' => true,
-            'message' => 'Quotation saved successfully with status: ' . ucfirst($status),
+            'message' => ($edit_id > 0 ? 'Quotation updated' : 'Quotation saved') . ' successfully with status: ' . ucfirst($status),
             'quotation_id' => $quotation_id,
             'quotation_no' => $quotation_no,
             'status' => $status

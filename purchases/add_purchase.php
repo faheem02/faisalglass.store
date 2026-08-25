@@ -33,6 +33,25 @@ function generateInvoiceNo($conn) {
     }
 }
 
+// Edit mode: load existing purchase passed via ?edit_id=N
+$edit_id = isset($_GET['edit_id']) ? intval($_GET['edit_id']) : 0;
+$edit_data = null;
+$edit_products = [];
+
+if ($edit_id > 0) {
+    $page_title = "Edit Purchase";
+    $edit_query = "SELECT * FROM purchase_master WHERE id = $edit_id";
+    $edit_result = mysqli_query($conn, $edit_query);
+    if ($edit_result && mysqli_num_rows($edit_result) > 0) {
+        $edit_data = mysqli_fetch_assoc($edit_result);
+        $edit_details_query = "SELECT * FROM purchase_details WHERE purchase_id = $edit_id ORDER BY id";
+        $edit_details_result = mysqli_query($conn, $edit_details_query);
+        while ($det = mysqli_fetch_assoc($edit_details_result)) {
+            $edit_products[] = $det;
+        }
+    }
+}
+
 // Fetch suppliers for dropdown
 $suppliers_query = "SELECT id, supplier_name, supplier_code, mobile, current_balance FROM suppliers WHERE status = 1 ORDER BY supplier_name";
 $suppliers_result = mysqli_query($conn, $suppliers_query);
@@ -93,7 +112,7 @@ $products_result = mysqli_query($conn, $products_query);
         
         <div class="d-sm-flex align-items-center justify-content-between mb-4">
             <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-shopping-cart text-success mr-2"></i> Add Purchase
+                <i class="fas fa-shopping-cart text-success mr-2"></i> <?php echo $edit_id > 0 ? 'Edit' : 'Add'; ?> Purchase
             </h1>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="../dashboard/dashboard.php">Dashboard</a></li>
@@ -120,8 +139,8 @@ $products_result = mysqli_query($conn, $products_query);
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label><i class="fas fa-barcode text-success mr-1"></i> Invoice Number</label>
-                                <input type="text" id="invoice_no_display" class="form-control" value="<?php echo generateInvoiceNo($conn); ?>" readonly style="background:#e8f5e9; font-weight:bold;">
-                                <input type="hidden" name="invoice_no" id="invoice_no" value="<?php echo generateInvoiceNo($conn); ?>">
+                                <input type="text" id="invoice_no_display" class="form-control" value="<?php echo $edit_data ? $edit_data['invoice_no'] : generateInvoiceNo($conn); ?>" readonly style="background:#e8f5e9; font-weight:bold;">
+                                <input type="hidden" name="invoice_no" id="invoice_no" value="<?php echo $edit_data ? $edit_data['invoice_no'] : generateInvoiceNo($conn); ?>">
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -337,6 +356,9 @@ $products_result = mysqli_query($conn, $products_query);
             <input type="hidden" name="subtotal" id="subtotal_input" value="0">
             <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
             <input type="hidden" name="grand_total" id="grand_total_input" value="0">
+            <?php if ($edit_id > 0): ?>
+            <input type="hidden" name="edit_id" id="edit_id" value="<?php echo $edit_id; ?>">
+            <?php endif; ?>
         </form>
         
     </div>
@@ -353,6 +375,26 @@ $products_result = mysqli_query($conn, $products_query);
 
 <script>
 let productCount = 1;
+
+// Edit mode data (from PHP)
+<?php if ($edit_data): ?>
+const editData = <?php echo json_encode([
+    'purchase_id' => $edit_data['id'],
+    'supplier_id' => $edit_data['supplier_id'],
+    'purchase_date' => $edit_data['purchase_date'],
+    'reference_no' => $edit_data['reference_no'],
+    'remarks' => $edit_data['remarks'],
+    'discount_percentage' => $edit_data['discount_percentage'],
+    'other_charges' => $edit_data['other_charges'],
+    'payment_type' => $edit_data['payment_type'],
+    'bank_account_id' => $edit_data['bank_account_id'],
+    'paid_amount' => $edit_data['paid_amount'],
+    'remaining_amount' => $edit_data['remaining_amount'],
+    'products' => $edit_products
+]); ?>;
+<?php else: ?>
+const editData = null;
+<?php endif; ?>
 
 function roundUpToMultipleOf6(value) {
     if (value <= 0) return 6;
@@ -542,6 +584,41 @@ $(document).ready(function() {
     updateStdAndArea(0);
     calculateRowAmount(0);
     calculateTotals();
+    
+    // Load edit data if in edit mode
+    if(editData) {
+        $('#supplier_id').val(editData.supplier_id).trigger('change');
+        $('input[name="purchase_date"]').val(editData.purchase_date);
+        $('input[name="reference_no"]').val(editData.reference_no || '');
+        $('textarea[name="remarks"]').val(editData.remarks || '');
+        $('#global_discount').val(editData.discount_percentage);
+        $('#other_charges').val(editData.other_charges);
+        $('#paid_amount').val(editData.paid_amount);
+        $('#payment_type').val(editData.payment_type).trigger('change');
+        if(editData.bank_account_id) {
+            $('select[name="bank_account_id"]').val(editData.bank_account_id);
+        }
+        
+        // Rebuild product rows from edit data
+        $('#productsBody').empty();
+        productCount = 0;
+        $.each(editData.products, function(i, item) {
+            addProductRow();
+            var row = productCount - 1;
+            $(`.product-select[data-row="${row}"]`).val(item.product_id).trigger('change');
+            $(`.client-height[data-row="${row}"]`).val(item.client_height);
+            $(`.client-width[data-row="${row}"]`).val(item.client_width);
+            $(`.std-height[data-row="${row}"]`).val(item.std_height);
+            $(`.std-width[data-row="${row}"]`).val(item.std_width);
+            $(`.quantity[data-row="${row}"]`).val(item.quantity);
+            $(`.unit-price[data-row="${row}"]`).val(item.unit_price);
+            $(`.retail-price[data-row="${row}"]`).val(item.retail_price);
+            $(`.area[data-row="${row}"]`).val(item.area);
+            $(`.discount-percent[data-row="${row}"]`).val(item.discount_percentage);
+            calculateRowAmount(row);
+        });
+        calculateTotals();
+    }
     
     // Submit via AJAX
     $('#generateInvoiceBtn').on('click', function(e) {

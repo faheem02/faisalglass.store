@@ -128,6 +128,47 @@ $result = mysqli_query($conn, $query);
         .status-converted { background-color: #007bff; color: white; }
         
         .action-buttons .btn { margin: 2px; }
+        
+        .modal-header-custom {
+            background: linear-gradient(135deg, #1e7e34, #0066cc);
+            color: white;
+            border-radius: 0.3rem 0.3rem 0 0;
+        }
+        .view-info-card {
+            background: #f8faf9;
+            border: 1px solid #e5e7eb;
+            border-left: 3px solid #1e7e34;
+            border-radius: 4px;
+            padding: 8px 12px;
+        }
+        .view-info-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #6b7280;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .view-info-value { font-weight: 600; color: #111827; word-break: break-word; }
+        .view-total-label { font-size: 12px; font-weight: 600; color: #374151; }
+        .view-total-value { font-weight: 700; color: #111827; text-align: right; }
+        .view-grand-total { background: #1e7e34; color: #fff; border-radius: 6px; }
+        .view-grand-total .view-total-label { color: #fff; }
+        .view-grand-total .view-total-value { color: #fff; font-size: 16px; }
+        .view-modal-table thead th {
+            background-color: #1e7e34;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            text-align: center;
+            border: none;
+        }
+        .view-modal-table td { vertical-align: middle; font-size: 13px; }
+        .view-modal-table .size-subheader th {
+            background: #0f6bb5;
+            font-size: 10px;
+            padding: 5px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body id="page-top">
@@ -201,6 +242,12 @@ $result = mysqli_query($conn, $query);
                                             </span>
                                         </td>
                                         <td class="action-buttons">
+                                            <button class="btn btn-sm btn-info" onclick="openViewModal(<?php echo $row['id']; ?>)" title="View Quotation">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <a href="add_quotation.php?edit_id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning" title="Edit Quotation">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
                                             <a href="print_quotation.php?id=<?php echo $row['id']; ?>" 
                                                class="btn btn-sm btn-primary" target="_blank" title="Print">
                                                 <i class="fas fa-print"></i>
@@ -227,6 +274,29 @@ $result = mysqli_query($conn, $query);
                 </div>
             </div>
         </footer>
+    </div>
+</div>
+
+<!-- View Quotation Modal -->
+<div class="modal fade" id="viewQuotationModal" tabindex="-1" role="dialog" aria-labelledby="viewQuotationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom py-3">
+                <h5 class="modal-title" id="viewQuotationModalLabel"><i class="fas fa-file-alt"></i> Quotation Details</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="viewQuotationBody">
+                <div class="text-center p-5">
+                    <div class="spinner-border text-success" role="status"></div>
+                    <p class="mt-2 mb-0">Loading quotation details...</p>
+                </div>
+            </div>
+            <div class="modal-footer" id="viewQuotationFooter">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -265,6 +335,119 @@ function confirmDelete(id) {
     }).then((result) => {
         if(result.isConfirmed) {
             window.location.href = 'view_quotation.php?delete_id=' + id;
+        }
+    });
+}
+
+function formatNumber(val) {
+    return parseFloat(val || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function statusBadgeHtml(status) {
+    var cls = 'status-draft';
+    if(status == 'hold') cls = 'status-hold';
+    else if(status == 'pending') cls = 'status-pending';
+    else if(status == 'approved') cls = 'status-approved';
+    else if(status == 'rejected') cls = 'status-rejected';
+    else if(status == 'converted') cls = 'status-converted';
+    return '<span class="status-badge ' + cls + '">' + (status.charAt(0).toUpperCase() + status.slice(1)) + '</span>';
+}
+
+function openViewModal(id) {
+    $('#viewQuotationModal').modal('show');
+    $('#viewQuotationBody').html('<div class="text-center p-5"><div class="spinner-border text-success" role="status"></div><p class="mt-2 mb-0">Loading quotation details...</p></div>');
+    
+    $.ajax({
+        url: 'get_quotation_details.php',
+        type: 'GET',
+        data: { id: id },
+        dataType: 'json',
+        success: function(response) {
+            if(!response.success) {
+                $('#viewQuotationBody').html('<div class="alert alert-danger m-3"><i class="fas fa-exclamation-circle"></i> ' + (response.message || 'Failed to load quotation') + '</div>');
+                return;
+            }
+            
+            var q = response.quotation;
+            var c = response.customer;
+            
+            var html = '';
+            html += '<div class="d-flex justify-content-between align-items-center mb-3">';
+            html += '<h5 class="mb-0"><strong>' + q.quotation_no + '</strong></h5>';
+            html += statusBadgeHtml(q.status);
+            html += '</div>';
+            
+            html += '<div class="row mb-3">';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + c.customer_name + '</div><small class="text-muted">' + c.customer_code + '</small></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + (c.mobile || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Quotation Date</div><div class="view-info-value">' + q.quotation_date + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Valid Until</div><div class="view-info-value">' + (q.valid_until || '-') + '</div></div></div>';
+            html += '<div class="col-md-6 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + (c.address || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Reference No</div><div class="view-info-value">' + (q.reference_no || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Created By</div><div class="view-info-value">' + (response.created_by || '-') + '</div></div></div>';
+            html += '</div>';
+            
+            if(response.items.length > 0) {
+                html += '<div class="table-responsive"><table class="table table-bordered view-modal-table">';
+                html += '<thead><tr>';
+                html += '<th rowspan="2" width="5%">SR #</th><th colspan="2">ACTUAL SIZE</th>';
+                html += '<th rowspan="2" width="7%">QTY</th><th rowspan="2" width="11%">Total Area (sq ft)</th>';
+                html += '<th rowspan="2" width="18%">GLASS TYPE</th><th rowspan="2" width="8%">PRICE</th>';
+                html += '<th rowspan="2" width="10%">DISC %</th><th rowspan="2" width="12%">TOTAL PRICE</th>';
+                html += '</tr><tr class="size-subheader"><th width="9%">HEIGHT</th><th width="9%">WIDTH</th></tr></thead><tbody>';
+                
+                var totalArea = 0;
+                var totalPrice = 0;
+                for(var i = 0; i < response.items.length; i++) {
+                    var item = response.items[i];
+                    var unitArea = parseFloat(item.area) || 0;
+                    var qty = parseFloat(item.quantity) || 0;
+                    var lineArea = unitArea * qty;
+                    var amount = parseFloat(item.net_amount) || parseFloat(item.amount) || 0;
+                    totalArea += lineArea;
+                    totalPrice += amount;
+                    html += '<tr>';
+                    html += '<td class="text-center">' + (i + 1) + '</td>';
+                    html += '<td class="text-center">' + (parseFloat(item.client_height) || 0) + '</td>';
+                    html += '<td class="text-center">' + (parseFloat(item.client_width) || 0) + '</td>';
+                    html += '<td class="text-center">' + qty + '</td>';
+                    html += '<td class="text-right">' + formatNumber(lineArea) + '</td>';
+                    html += '<td>' + (item.product_name || '-') + '</td>';
+                    html += '<td class="text-right">' + formatNumber(item.unit_price) + '</td>';
+                    html += '<td class="text-center">' + (parseFloat(item.discount_percentage) || 0) + '%</td>';
+                    html += '<td class="text-right"><strong>' + formatNumber(amount) + '</strong></td>';
+                    html += '</tr>';
+                }
+                html += '</tbody></table></div>';
+                
+                html += '<div class="row justify-content-end">';
+                html += '<div class="col-md-5">';
+                html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Subtotal</span><span class="view-total-value">' + formatNumber(q.subtotal) + '</span></div>';
+                if(q.discount_amount > 0) {
+                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Discount (' + q.discount_percentage + '%)</span><span class="view-total-value text-danger">- ' + formatNumber(q.discount_amount) + '</span></div>';
+                }
+                if(q.other_charges > 0) {
+                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Other Charges</span><span class="view-total-value">+ ' + formatNumber(q.other_charges) + '</span></div>';
+                }
+                html += '<div class="view-info-card view-grand-total mb-2 d-flex justify-content-between p-3"><span class="view-total-label">Grand Total</span><span class="view-total-value">' + formatNumber(q.grand_total) + '</span></div>';
+                html += '</div></div>';
+            } else {
+                html += '<div class="alert alert-info">No products found for this quotation.</div>';
+            }
+            
+            if(q.remarks) {
+                html += '<div class="alert alert-warning mb-0"><strong>Remarks:</strong> ' + q.remarks + '</div>';
+            }
+            
+            $('#viewQuotationBody').html(html);
+            $('#viewQuotationFooter').html(
+                '<a href="add_quotation.php?edit_id=' + q.id + '" class="btn btn-warning"><i class="fas fa-edit"></i> Edit</a>' +
+                '<a href="print_quotation.php?id=' + q.id + '" class="btn btn-primary" target="_blank"><i class="fas fa-print"></i> Print</a>' +
+                '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>'
+            );
+        },
+        error: function() {
+            $('#viewQuotationBody').html('<div class="alert alert-danger m-3"><i class="fas fa-exclamation-circle"></i> Failed to load quotation details</div>');
         }
     });
 }

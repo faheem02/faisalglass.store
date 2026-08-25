@@ -201,6 +201,22 @@ $monthly_result = mysqli_query($conn, $monthly_query);
             font-weight: bold;
             color: #0066cc;
         }
+        @media print {
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin-bottom: 8px !important; }
+            .card-header-custom, .table thead th, .employee-info {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body id="page-top">
@@ -215,14 +231,14 @@ $monthly_result = mysqli_query($conn, $monthly_query);
             <h1 class="h3 mb-0 text-gray-800">
                 <i class="fas fa-book text-success mr-2"></i> Employee Ledger
             </h1>
-            <div>
+            <div class="no-print">
                 <a href="employee_detail.php?id=<?php echo $employee_id; ?>" class="btn btn-secondary">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Detail
                 </a>
                 <a href="paid_amount.php?id=<?php echo $employee_id; ?>" class="btn btn-green ml-2">
                     <i class="fas fa-money-bill-wave mr-1"></i> Make Payment
                 </a>
-                <button type="button" class="btn btn-info ml-2" onclick="window.print()">
+                <button type="button" class="btn btn-info ml-2" onclick="window.open('print_employee_ledger.php?id=<?php echo $employee_id; ?>&from_date=<?php echo urlencode($from_date); ?>&to_date=<?php echo urlencode($to_date); ?>', '_blank', 'width=1000,height=750')">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-primary ml-2" id="exportBtn">
@@ -264,7 +280,7 @@ $monthly_result = mysqli_query($conn, $monthly_query);
         </div>
         
         <!-- Filter Section -->
-        <div class="card form-card">
+        <div class="card form-card no-print">
             <div class="card-header-custom">
                 <i class="fas fa-filter mr-2"></i> Filter Ledger
             </div>

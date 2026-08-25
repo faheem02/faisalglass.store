@@ -194,8 +194,20 @@ $page_title = "Refund Report";
         }
         
         @media print {
-            .no-print { display: none !important; }
+            body { background: #fff !important; }
+            #wrapper { margin: 0 !important; }
+            #accordionSidebar, .topbar, .sticky-footer, .scroll-to-top,
+            .no-print, .modal, .modal-backdrop, .dataTables_length,
+            .dataTables_filter, .dataTables_info, .dataTables_paginate,
+            .dataTables_wrapper > .row:first-child, .dataTables_wrapper > .row:last-child {
+                display: none !important;
+            }
+            .container-fluid { padding: 0 !important; }
             .stat-card { border: 1px solid #ddd; }
+            .card-header, .table thead th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
@@ -226,7 +238,7 @@ $page_title = "Refund Report";
                             <i class="fas fa-undo-alt"></i> Refund Report
                         </h1>
                         <div class="no-print">
-                            <button onclick="window.print()" class="btn btn-secondary btn-sm">
+                            <button onclick="window.open('print_refund_report.php?from_date=<?php echo $from_date; ?>&to_date=<?php echo $to_date; ?>&filter_type=<?php echo $filter_type; ?>&customer_id=<?php echo $customer_filter; ?>', '_blank', 'width=1000,height=750')" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-print"></i> Print
                             </button>
                             <button id="exportExcelBtn" class="btn btn-success btn-sm">
