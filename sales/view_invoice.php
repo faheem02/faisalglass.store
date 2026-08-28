@@ -102,15 +102,8 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 <div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-warning text-uppercase mb-1">Outstanding</div><div class="summary-number text-warning"><?php echo formatCurrency($summary['total_remaining'] ?? 0); ?></div><small><?php echo $summary['total_count'] ?? 0; ?> Invoices</small></div></div>
 </div>
 <div class="card form-card"><div class="card-header-custom"><i class="fas fa-filter mr-2"></i> Filter Sales</div><div class="card-body"><form method="GET" class="form-inline"><div class="row w-100"><div class="col-md-3"><input type="date" name="from_date" class="form-control w-100" value="<?php echo $from_date; ?>"></div><div class="col-md-3"><input type="date" name="to_date" class="form-control w-100" value="<?php echo $to_date; ?>"></div><div class="col-md-4"><select name="customer_id" class="form-control w-100"><option value="0">All Customers</option><?php while($c = mysqli_fetch_assoc($customers_result)): ?><option value="<?php echo $c['id']; ?>" <?php echo ($filter_customer == $c['id']) ? 'selected' : ''; ?>><?php echo $c['customer_name']; ?></option><?php endwhile; ?></select></div><div class="col-md-2"><button type="submit" class="btn btn-green w-100"><i class="fas fa-search"></i> Filter</button></div></div></form></div></div>
-<div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Payment Type</th><th>Reference No</th><th>Remarks</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-<?php while($sale = mysqli_fetch_assoc($sales_result)): 
-    $status = $sale['remaining_amount'] <= 0 ? 'Paid' : ($sale['received_amount'] > 0 ? 'Partial' : 'Pending');
-    $status_class = $sale['remaining_amount'] <= 0 ? 'badge-paid' : ($sale['received_amount'] > 0 ? 'badge-partial' : 'badge-pending');
-    if($sale['refund_status'] != 'none') {
-        $status = 'Refunded (' . ucfirst($sale['refund_status']) . ')';
-        $status_class = 'badge-refund';
-    }
-?>
+<div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Payment Type</th><th>Reference No</th><th>Remarks</th><th>Actions</th></tr></thead><tbody>
+<?php while($sale = mysqli_fetch_assoc($sales_result)): ?>
 <tr>
     <td class="font-weight-bold text-primary"><?php echo $sale['invoice_no']; ?></td>
     <td><?php echo date('d-m-Y', strtotime($sale['sale_date'])); ?></td>
@@ -121,7 +114,6 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
     <td><?php echo ucfirst($sale['payment_type']); ?></td>
     <td><?php echo $sale['reference_no'] ? htmlspecialchars($sale['reference_no']) : '-'; ?></td>
     <td><?php echo $sale['remarks'] ? htmlspecialchars($sale['remarks']) : '-'; ?></td>
-    <td class="text-center"><span class="<?php echo $status_class; ?>"><?php echo $status; ?></span></td>
     <td>
         <div class="action-btns">
             <button class="btn btn-sm btn-info" title="View Sale" onclick="openViewModal(<?php echo $sale['id']; ?>)"><i class="fas fa-eye"></i></button>

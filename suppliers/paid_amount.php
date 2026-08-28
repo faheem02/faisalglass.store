@@ -365,6 +365,7 @@ $method_result = mysqli_query($conn, $method_query);
                                 <th>Supplier Name</th>
                                 <th>Payment Method</th>
                                 <th>Reference No</th>
+                                <th>Invoice No</th>
                                 <th class="text-right">Amount</th>
                                 <th>Remarks</th>
                                 <th>Actions</th>
@@ -389,12 +390,17 @@ $method_result = mysqli_query($conn, $method_query);
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($payment['reference_no']) ?: '-'; ?></td>
+                                <td>
+                                    <?php if(!empty($payment['purchase_invoice_no'])): ?>
+                                        <span class="font-weight-bold text-warning"><?php echo htmlspecialchars($payment['purchase_invoice_no']); ?></span>
+                                    <?php else: ?>-<?php endif; ?>
+                                </td>
                                 <td class="text-right text-danger font-weight-bold"><?php echo formatCurrency($payment['amount']); ?></td>
                                 <td><?php echo htmlspecialchars($payment['remarks']) ?: '-'; ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-info" onclick="viewPayment(<?php echo $payment['id']; ?>)" title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
+                                    <a href="print_payment_receipt.php?id=<?php echo $payment['id']; ?>" target="_blank" class="btn btn-sm btn-primary" title="Print Receipt">
+                                        <i class="fas fa-print"></i>
+                                    </a>
                                     <button type="button" class="btn btn-sm btn-danger" onclick="deletePayment(<?php echo $payment['id']; ?>, <?php echo $payment['supplier_id']; ?>, <?php echo $payment['amount']; ?>)" title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -403,13 +409,13 @@ $method_result = mysqli_query($conn, $method_query);
                             <?php endwhile; ?>
                             <?php if(mysqli_num_rows($payments_result) == 0): ?>
                             <tr>
-                                <td colspan="9" class="text-center">No payment records found for the selected period</td>
+                                <td colspan="10" class="text-center">No payment records found for the selected period</td>
                             </tr>
                             <?php endif; ?>
                         </tbody>
                         <tfoot>
                             <tr style="background: #f8f9fc; font-weight: bold;">
-                                <td colspan="6" class="text-right"><strong>Total:</strong></td>
+                                <td colspan="7" class="text-right"><strong>Total:</strong></td>
                                 <td class="text-right text-danger"><strong><?php echo formatCurrency($total_payments); ?></strong></td>
                                 <td colspan="2"></td>
                             </tr>

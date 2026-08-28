@@ -27,10 +27,22 @@ if($quotation_id <= 0) {
     exit;
 }
 
-$query = "SELECT q.*, c.customer_name, c.customer_code, c.mobile, c.address
-          FROM quotation_master q
-          LEFT JOIN customers c ON q.customer_id = c.id
-          WHERE q.id = $quotation_id";
+// Check if payment columns exist
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM quotation_master LIKE 'bank_account_id'");
+$has_payment_cols = ($col_check && mysqli_num_rows($col_check) > 0);
+
+if($has_payment_cols) {
+    $query = "SELECT q.*, c.customer_name, c.customer_code, c.mobile, c.address, c.current_balance, b.bank_name, b.account_number
+              FROM quotation_master q
+              LEFT JOIN customers c ON q.customer_id = c.id
+              LEFT JOIN bank_accounts b ON q.bank_account_id = b.id
+              WHERE q.id = $quotation_id";
+} else {
+    $query = "SELECT q.*, c.customer_name, c.customer_code, c.mobile, c.address, c.current_balance
+              FROM quotation_master q
+              LEFT JOIN customers c ON q.customer_id = c.id
+              WHERE q.id = $quotation_id";
+}
 $result = mysqli_query($conn, $query);
 
 if(!$result || mysqli_num_rows($result) == 0) {
@@ -68,12 +80,18 @@ $response = [
         'discount_amount' => floatval($quotation['discount_amount']),
         'other_charges' => floatval($quotation['other_charges']),
         'grand_total' => floatval($quotation['grand_total']),
+        'received_amount' => floatval($quotation['received_amount'] ?? 0),
+        'remaining_amount' => floatval($quotation['remaining_amount'] ?? 0),
+        'payment_type' => $quotation['payment_type'] ?? 'credit',
+        'bank_name' => $quotation['bank_name'] ?? '',
+        'account_number' => $quotation['account_number'] ?? '',
     ],
     'customer' => [
         'customer_name' => $quotation['customer_name'] ?? 'Walk-In',
         'customer_code' => $quotation['customer_code'] ?? '',
         'mobile' => $quotation['mobile'] ?? '',
         'address' => $quotation['address'] ?? '',
+        'current_balance' => floatval($quotation['current_balance'] ?? 0),
     ],
     'items' => $items
 ];

@@ -1,9 +1,8 @@
 <?php
 /**
- * Print Supplier Payment Receipt Page
- * Faysal Glass And Aluminium Centre
+ * Print Supplier Payment Receipt
+ * Faysal Glass & Aluminium Centre
  */
-
 session_start();
 if(!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: ../login.php");
@@ -15,7 +14,7 @@ include('../includes/txt.php');
 
 $payment_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
-$query = "SELECT p.*, s.supplier_name, s.supplier_code, s.mobile, s.company_name, s.address,
+$query = "SELECT p.*, s.supplier_name, s.supplier_code, s.mobile, s.company_name,
           ba.bank_name, ba.account_title, ba.account_number
           FROM supplier_payments p
           LEFT JOIN suppliers s ON p.supplier_id = s.id
@@ -28,383 +27,299 @@ if(!$payment) {
     header("Location: paid_amount.php");
     exit();
 }
-
-$amount_in_words = number_format($payment['amount'], 2);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Receipt</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <title>Receipt - PAY-<?php echo str_pad($payment['id'], 4, '0', STR_PAD_LEFT); ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        @media print {
-            .no-print { display: none !important; }
-            body { padding: 0; margin: 0; background: white; }
-            .list-container { margin: 0; box-shadow: none; padding: 0; }
-            @page { size: A4 portrait; margin: 12mm; }
-        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
+            background: #dde3ea;
             font-family: 'Poppins', sans-serif;
-            background: #eef1f5;
-            color: #212529;
-            font-size: 12px;
-            line-height: 1.6;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; min-height: 100vh;
+            padding: 28px 16px 80px; color: #1e1e1e;
         }
-        .list-container {
-            max-width: 760px;
-            margin: 24px auto;
-            background: #fff;
-            box-shadow: 0 0 24px rgba(0,0,0,0.12);
-            border-radius: 6px;
-            padding: 26px 30px;
+        .toolbar { display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; justify-content: center; }
+        .toolbar button {
+            padding: 9px 26px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+        }
+        .btn-back  { background: #1e7e34; color: #fff; }
+        .btn-print { background: #2c6e9c; color: #fff; }
+        .btn-pdf   { background: #c0392b; color: #fff; }
+
+        /* Receipt Card */
+        .receipt-card {
+            width: 420px; background: #fff;
+            border-radius: 4px; box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+            overflow: hidden;
         }
 
-        /* ===== Company Header ===== */
-        .company-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            border-bottom: 3px double #1e7e34;
-            padding-bottom: 14px;
-            margin-bottom: 18px;
+        /* Top band */
+        .top-band {
+            background: #0b1e2e; color: #fff;
+            padding: 16px 20px 12px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
-        .brand-left { display: flex; align-items: center; gap: 14px; }
-        .brand-logo {
-            width: 54px;
-            height: 54px;
-            background: #1e7e34;
-            color: #fff;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .brand-name {
-            font-size: 21px;
-            font-weight: 700;
-            color: #14532d;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-            line-height: 1.2;
-        }
-        .brand-tagline {
-            font-size: 11px;
-            color: #6b7280;
-            letter-spacing: 0.5px;
-        }
-        .company-contact-info {
-            text-align: right;
-            font-size: 11px;
-            color: #374151;
-            line-height: 1.8;
-        }
-        .company-contact-info .contact-line { white-space: nowrap; }
-        .company-contact-info i { color: #1e7e34; width: 16px; }
+        .company-name { font-size: 18px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; line-height: 1.2; }
+        .company-sub  { font-size: 9.5px; opacity: 0.8; margin-top: 2px; }
+        .company-info { font-size: 9px; opacity: 0.75; margin-top: 4px; line-height: 1.6; }
+        .receipt-no-box { text-align: center; background: rgba(255,255,255,0.12); padding: 7px 12px; border-radius: 4px; white-space: nowrap; }
+        .receipt-no-box .rno-label { font-size: 8.5px; letter-spacing: 1.5px; opacity: 0.8; text-transform: uppercase; }
+        .receipt-no-box .rno-val   { font-size: 15px; font-weight: 800; }
 
-        /* ===== Receipt Header ===== */
-        .receipt-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-            background: #f8faf9;
-            border: 1px solid #e5e7eb;
-            border-left: 4px solid #1e7e34;
-            border-radius: 4px;
-            padding: 10px 14px;
-        }
-        .receipt-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #14532d;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-        }
-        .receipt-no {
-            font-size: 11px;
-            font-weight: 600;
-            color: #374151;
-            text-align: right;
-        }
-        .receipt-no .big {
-            font-size: 15px;
-            color: #1e7e34;
-            font-weight: 700;
+        /* Title ribbon */
+        .title-ribbon {
+            background: #f0f4f8; text-align: center; padding: 8px 0;
+            font-size: 12px; font-weight: 700; letter-spacing: 5px;
+            color: #0b1e2e; text-transform: uppercase;
+            border-bottom: 1.5px dashed #c0c8d8;
         }
 
-        /* ===== Info Grid ===== */
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 18px;
+        /* Body */
+        .receipt-body { padding: 14px 20px; }
+        .section-head {
+            font-size: 9px; font-weight: 700; letter-spacing: 2px;
+            color: #8a9ab0; text-transform: uppercase;
+            margin: 12px 0 6px; padding-bottom: 3px;
+            border-bottom: 1px solid #e8eef4;
         }
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            background: #f8faf9;
-            border: 1px solid #e5e7eb;
-            border-left: 3px solid #1e7e34;
-            border-radius: 4px;
-            padding: 7px 12px;
+        .detail-row {
+            display: flex; justify-content: space-between; align-items: baseline;
+            padding: 4px 0; font-size: 11px; border-bottom: 1px dotted #e2e8f0;
         }
-        .info-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: #6b7280;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-        .info-value {
-            font-weight: 600;
-            color: #111827;
-            word-break: break-word;
-        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-lbl { color: #6b7a8d; font-weight: 500; }
+        .detail-val { color: #1a2535; font-weight: 600; text-align: right; }
 
-        /* ===== Amount Box ===== */
+        /* Amount box */
         .amount-box {
-            text-align: center;
-            border: 2px solid #1e7e34;
-            border-radius: 8px;
-            padding: 16px 10px;
-            margin-bottom: 18px;
-            background: #f0faf2;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            background: #0b1e2e; color: #fff;
+            margin: 14px 0 4px; padding: 12px 16px; border-radius: 4px;
+            display: flex; justify-content: space-between; align-items: center;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
-        .amount-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: #6b7280;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-        .amount-value {
-            font-size: 26px;
-            font-weight: 800;
-            color: #1e7e34;
-            margin-top: 2px;
-        }
-        .amount-words {
-            font-size: 11px;
-            color: #374151;
-            margin-top: 2px;
-            font-style: italic;
-        }
+        .am-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; opacity: 0.8; }
+        .am-value { font-size: 22px; font-weight: 800; }
 
-        /* ===== Details Table ===== */
-        .detail-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin-bottom: 18px;
+        /* Payment method */
+        .method-row { display: flex; gap: 18px; padding: 8px 0; font-size: 10.5px; }
+        .method-item { display: flex; align-items: center; gap: 5px; color: #3a4a5a; }
+        .chk-box {
+            width: 14px; height: 14px; border: 2px solid #0b1e2e;
+            border-radius: 2px; display: inline-flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
-        .detail-table th {
-            background: #1e7e34;
-            color: #fff;
-            padding: 7px 10px;
-            text-align: left;
-            border: 1px solid #166d2e;
-            font-weight: 600;
-            width: 38%;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .detail-table td {
-            padding: 7px 10px;
-            border: 1px solid #e5e7eb;
-            background: #fff;
-        }
-        .detail-table tr:nth-child(even) td { background: #f8faf9; }
+        .chk-box.checked { background: #0b1e2e; color: #fff; font-size: 9px; }
 
-        .remarks-box {
-            background: #fffbe8;
-            border: 1px solid #ffe69c;
-            border-radius: 4px;
-            padding: 10px 14px;
-            margin-bottom: 18px;
-            font-size: 11px;
-            color: #856404;
+        /* Signature */
+        .sig-row {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-top: 16px; padding-top: 10px;
+            border-top: 1.5px solid #0b1e2e;
         }
-        .remarks-box strong { color: #664d03; }
+        .co-name { font-size: 12px; font-weight: 700; color: #0b1e2e; }
+        .co-sub  { font-size: 8.5px; color: #5a6a7a; }
+        .sig-right { text-align: center; }
+        .sig-line  { border-bottom: 1px solid #6b7a8d; height: 26px; min-width: 100px; }
+        .sig-label { font-size: 9px; color: #6b7a8d; margin-top: 2px; }
 
-        /* ===== Footer ===== */
-        .list-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-top: 24px;
-            padding-top: 12px;
-            border-top: 1px solid #e5e7eb;
+        /* Footer */
+        .receipt-footer {
+            background: #f7f9fb; text-align: center;
+            padding: 10px 16px; border-top: 1px solid #e2e8f0;
+            font-size: 10px; color: #6b7a8d;
         }
-        .generated-info { font-size: 11px; color: #6b7280; }
-        .generated-info strong { color: #374151; }
-        .signature-block { text-align: center; width: 200px; }
-        .sig-line { border-bottom: 1.5px solid #374151; height: 34px; margin-bottom: 4px; }
-        .sig-label { font-size: 11px; color: #6b7280; letter-spacing: 0.5px; }
+        .receipt-footer .thankyou { font-size: 12px; font-weight: 700; color: #0b1e2e; }
 
-        .action-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            padding: 12px;
-            background: rgba(255,255,255,0.96);
-            box-shadow: 0 -2px 12px rgba(0,0,0,0.12);
-            z-index: 1000;
+        /* Bottom row: stamp + signature */
+        .bottom-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; padding-top: 12px; border-top: 1.5px solid #0b1e2e; }
+        .stamp-area { width: 90px; height: 70px; /* empty — stamp lagegi */ }
+        .stamp-label { font-size: 9px; color: #6b7a8d; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; text-align: center; }
+        .sig-area { text-align: center; }
+        .sig-line { border-bottom: 1px solid #374151; height: 30px; min-width: 110px; margin-bottom: 4px; }
+        .sig-label { font-size: 9px; color: #6b7a8d; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        @media print {
+            body { background: #fff; padding: 0; margin: 0; display: block; }
+            .toolbar { display: none !important; }
+            .receipt-card { width: 100%; box-shadow: none; border-radius: 0; }
+            @page { size: 80mm 200mm; margin: 4mm; }
         }
-        .btn-action {
-            padding: 10px 24px;
-            margin: 0 8px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            color: #fff;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        }
-        .btn-print { background: #1e7e34; }
-        .btn-exit { background: #1a56db; }
     </style>
 </head>
 <body>
-<div class="list-container" id="listContent">
 
-    <div class="company-header">
-        <div class="brand-left">
-            <div class="brand-logo">FG</div>
-            <div>
-                <div class="brand-name">Faisal Glass &amp; Aluminum Centre</div>
-                <div class="brand-tagline">Deals in all kind of glass local &amp; imported</div>
+<div class="toolbar">
+    <button class="btn-back"  onclick="window.close()"><i class="fas fa-arrow-left"></i> Back</button>
+    <button class="btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+    <button class="btn-pdf"   onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+</div>
+
+<div class="receipt-card" id="receipt">
+
+    <!-- Top band -->
+    <div class="top-band">
+        <div>
+            <div class="company-name">FAISAL GLASS</div>
+            <div class="company-sub">DEALERS OF GHANI GLASS LIMITED</div>
+            <div class="company-info">
+                📞 0321-4186775 &nbsp;|&nbsp; 0322-8701098<br>
+                📍 Lajna Chowk Collage Road Township Lahore
             </div>
         </div>
-        <div class="company-contact-info">
-            <div class="contact-line"><i class="fas fa-phone-alt"></i> 0321-4186775 &nbsp;&nbsp; <i class="fas fa-mobile-alt"></i> 0322-8701098</div>
-            <div class="contact-line"><i class="fas fa-map-marker-alt"></i> Lajna Chowk Collage Road Township Lahore</div>
+        <div class="receipt-no-box">
+            <div class="rno-label">Voucher No.</div>
+            <div class="rno-val">PAY-<?php echo str_pad($payment['id'], 4, '0', STR_PAD_LEFT); ?></div>
         </div>
     </div>
 
-    <div class="receipt-head">
-        <div class="receipt-title"><i class="fas fa-receipt"></i> Payment Receipt</div>
-        <div class="receipt-no">
-            Receipt No: <span class="big">PAY-<?php echo str_pad($payment['id'], 4, '0', STR_PAD_LEFT); ?></span>
-        </div>
-    </div>
+    <!-- Title -->
+    <div class="title-ribbon">PAYMENT VOUCHER</div>
 
-    <div class="info-grid">
-        <div class="info-item">
-            <span class="info-label">Supplier Code</span>
-            <span class="info-value"><?php echo htmlspecialchars($payment['supplier_code']); ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Supplier Name</span>
-            <span class="info-value"><?php echo htmlspecialchars($payment['supplier_name']); ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Payment Date</span>
-            <span class="info-value"><?php echo date('d-m-Y', strtotime($payment['payment_date'])); ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Payment Method</span>
-            <span class="info-value">
-                <?php if($payment['payment_method'] == 'cash'): ?>
-                    <i class="fas fa-money-bill-wave" style="color:#28a745;"></i> Cash
-                <?php else: ?>
-                    <i class="fas fa-university" style="color:#0066cc;"></i> Bank Transfer / Cheque
-                <?php endif; ?>
-            </span>
-        </div>
-    </div>
+    <!-- Body -->
+    <div class="receipt-body">
 
-    <div class="amount-box">
-        <div class="amount-label">Amount Received</div>
-        <div class="amount-value"><?php echo formatCurrency($payment['amount']); ?></div>
-        <div class="amount-words">Rupees <?php echo $amount_in_words; ?> only</div>
-    </div>
-
-    <table class="detail-table">
-        <tr>
-            <th>Payment ID</th>
-            <td><?php echo $payment['id']; ?></td>
-        </tr>
+        <div class="section-head">Paid To</div>
+        <div class="detail-row">
+            <span class="detail-lbl">Supplier Name</span>
+            <span class="detail-val"><?php echo htmlspecialchars($payment['supplier_name']); ?></span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-lbl">Supplier Code</span>
+            <span class="detail-val"><?php echo htmlspecialchars($payment['supplier_code']); ?></span>
+        </div>
+        <?php if(!empty($payment['mobile'])): ?>
+        <div class="detail-row">
+            <span class="detail-lbl">Mobile</span>
+            <span class="detail-val"><?php echo htmlspecialchars($payment['mobile']); ?></span>
+        </div>
+        <?php endif; ?>
         <?php if(!empty($payment['company_name'])): ?>
-        <tr>
-            <th>Company</th>
-            <td><?php echo htmlspecialchars($payment['company_name']); ?></td>
-        </tr>
+        <div class="detail-row">
+            <span class="detail-lbl">Company</span>
+            <span class="detail-val"><?php echo htmlspecialchars($payment['company_name']); ?></span>
+        </div>
         <?php endif; ?>
-        <tr>
-            <th>Mobile</th>
-            <td><?php echo htmlspecialchars($payment['mobile']) ?: '-'; ?></td>
-        </tr>
-        <?php if(!empty($payment['address'])): ?>
-        <tr>
-            <th>Address</th>
-            <td><?php echo htmlspecialchars($payment['address']); ?></td>
-        </tr>
-        <?php endif; ?>
+
+        <div class="section-head">Payment Details</div>
+        <div class="detail-row">
+            <span class="detail-lbl">Date</span>
+            <span class="detail-val"><?php echo date('d-m-Y', strtotime($payment['payment_date'])); ?></span>
+        </div>
         <?php if(!empty($payment['reference_no'])): ?>
-        <tr>
-            <th>Reference No</th>
-            <td><?php echo htmlspecialchars($payment['reference_no']); ?></td>
-        </tr>
+        <div class="detail-row">
+            <span class="detail-lbl">Reference / Cheque No.</span>
+            <span class="detail-val"><?php echo htmlspecialchars($payment['reference_no']); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if(!empty($payment['purchase_invoice_no'])): ?>
+        <div class="detail-row" style="background:#fffbea;border-radius:3px;padding:5px 4px;">
+            <span class="detail-lbl" style="color:#92400e;font-weight:700;">Against Invoice</span>
+            <span class="detail-val" style="color:#92400e;font-weight:700;"><?php echo htmlspecialchars($payment['purchase_invoice_no']); ?></span>
+        </div>
         <?php endif; ?>
         <?php if($payment['payment_method'] == 'bank' && !empty($payment['bank_name'])): ?>
-        <tr>
-            <th>Bank Details</th>
-            <td>
+        <div class="detail-row">
+            <span class="detail-lbl">Bank</span>
+            <span class="detail-val">
                 <?php echo htmlspecialchars($payment['bank_name']); ?>
-                <?php if(!empty($payment['account_title'])): ?><br><?php echo htmlspecialchars($payment['account_title']); ?><?php endif; ?>
-                <?php if(!empty($payment['account_number'])): ?> (<?php echo htmlspecialchars($payment['account_number']); ?>)<?php endif; ?>
-            </td>
-        </tr>
+                <?php if(!empty($payment['account_title'])): ?> – <?php echo htmlspecialchars($payment['account_title']); ?><?php endif; ?>
+            </span>
+        </div>
         <?php endif; ?>
-    </table>
-
-    <?php if(!empty($payment['remarks'])): ?>
-    <div class="remarks-box">
-        <strong><i class="fas fa-comment"></i> Remarks:</strong><br>
-        <?php echo nl2br(htmlspecialchars($payment['remarks'])); ?>
-    </div>
-    <?php endif; ?>
-
-    <div class="list-footer">
-        <div class="generated-info">
-            Generated on: <strong><?php echo date('d-m-Y h:i A'); ?></strong><br>
-            Received By: <?php echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : 'Authorized Person'; ?>
+        <?php if(!empty($payment['remarks'])): ?>
+        <div class="detail-row">
+            <span class="detail-lbl">Remarks</span>
+            <span class="detail-val" style="color:#4a5a6a;"><?php echo htmlspecialchars($payment['remarks']); ?></span>
         </div>
-        <div class="signature-block">
-            <div class="sig-line"></div>
-            <div class="sig-label">Authorized Signature</div>
+        <?php endif; ?>
+
+        <!-- Amount -->
+        <div class="amount-box">
+            <div class="am-label">Amount Paid</div>
+            <div class="am-value">Rs. <?php echo number_format($payment['amount'], 2); ?></div>
         </div>
+
+        <!-- Method checkboxes -->
+        <div class="method-row">
+            <div class="method-item">
+                <div class="chk-box <?php echo $payment['payment_method']=='cash' ? 'checked' : ''; ?>">
+                    <?php echo $payment['payment_method']=='cash' ? '✓' : ''; ?>
+                </div>
+                Cash
+            </div>
+            <div class="method-item">
+                <div class="chk-box <?php echo $payment['payment_method']=='bank' ? 'checked' : ''; ?>">
+                    <?php echo $payment['payment_method']=='bank' ? '✓' : ''; ?>
+                </div>
+                Bank Transfer / Cheque
+            </div>
+        </div>
+
+        <!-- Stamp + Signature -->
+        <div class="bottom-row">
+            <div>
+                <div class="stamp-area"></div>
+                <div class="stamp-label">Stamp</div>
+            </div>
+            <div class="sig-area">
+                <div class="sig-line"></div>
+                <div class="sig-label">Signature</div>
+            </div>
+        </div>
+
+    </div><!-- end receipt-body -->
+
+    <div class="receipt-footer">
+        <div class="thankyou">Thank You for Your Business!</div>
+        <div style="margin-top:3px;">Computer generated voucher &bull; <?php echo date('d-m-Y h:i A'); ?></div>
     </div>
-</div>
 
-<div class="action-bar no-print">
-    <button class="btn-action btn-print" onclick="window.print();"><i class="fas fa-print"></i> Print</button>
-    <button class="btn-action btn-exit" id="exitBtn"><i class="fas fa-sign-out-alt"></i> Exit</button>
-</div>
+</div><!-- end receipt-card -->
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
-$(document).ready(function() {
-    $('#exitBtn').on('click', function() { window.close(); });
-});
+function exportPDF() {
+    const receipt = document.getElementById('receipt');
+    const btn = document.querySelector('.btn-pdf');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '⏳ Generating...'; btn.disabled = true;
+
+    if (typeof window.jspdf === 'undefined') {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = doExport;
+        s.onerror = () => { alert('PDF library failed to load.'); btn.innerHTML = orig; btn.disabled = false; };
+        document.head.appendChild(s);
+    } else { doExport(); }
+
+    function doExport() {
+        const { jsPDF } = window.jspdf;
+        html2canvas(receipt, { scale: 2.5, backgroundColor: '#ffffff', logging: false }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 200] });
+            const w = 80, h = (canvas.height / canvas.width) * 80;
+            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+            pdf.save('Faisal_Glass_PAY-<?php echo str_pad($payment['id'], 4, '0', STR_PAD_LEFT); ?>.pdf');
+            btn.innerHTML = orig; btn.disabled = false;
+        }).catch(() => { alert('PDF generation failed.'); btn.innerHTML = orig; btn.disabled = false; });
+    }
+}
+(function(){
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.async = true; document.head.appendChild(s);
+})();
 </script>
 </body>
 </html>

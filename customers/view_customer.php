@@ -663,12 +663,12 @@ $page_title = "View Customers";
         function deleteCustomer(id) {
             Swal.fire({
                 title: 'Are you sure?',
-                text: "This customer cannot be deleted if they have sales or ledger entries!",
+                text: "Customer will be deleted but all data (sales, payments, ledger) will remain safe!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#dc3545',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, delete it!',
+                confirmButtonText: 'Yes, Delete!',
                 cancelButtonText: 'Cancel'
             }).then((result) => {
                 if (result.isConfirmed) {

@@ -343,7 +343,7 @@ if(isset($_POST['save_product'])) {
                         <button type="button" class="btn btn-sm btn-secondary" id="removeLastSizeBtn"><i class="fas fa-minus-circle mr-1"></i> Remove Last Size</button>
                         <input type="hidden" name="sizes_data" id="sizes_data" value="">
                         <div class="info-note mt-2">
-                            <i class="fas fa-info-circle"></i> <strong>Per Size:</strong> Har size ke liye alag opening quantity (pieces) aur alag purchase/sale rate (₨/sq ft) dalen. Amount har size ka khud calculate hota hai.
+                            <i class="fas fa-info-circle"></i> <strong>Per Size:</strong> Enter separate opening quantity (pieces) and separate purchase/sale rate (₨/sq ft) for each size. The amount for each size is calculated automatically.
                         </div>
                     </div>
                     

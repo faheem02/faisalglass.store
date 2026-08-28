@@ -1,6 +1,6 @@
 <?php
 /**
- * Print Quotation Page - Clean Totals Outside Table
+ * Print Quotation Page - Styled Matching Print Invoice
  * Faysal Glass And Aluminium Centre
  */
 
@@ -14,17 +14,32 @@ include('../includes/database.php');
 include('../includes/txt.php');
 
 $quotation_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$quotation_no = isset($_GET['quotation_no']) ? mysqli_real_escape_string($conn, $_GET['quotation_no']) : '';
 
-if($quotation_id <= 0) {
+if($quotation_id <= 0 && empty($quotation_no)) {
     header("Location: view_quotation.php");
     exit();
 }
 
 // Fetch quotation master
-$query = "SELECT q.*, c.customer_name, c.customer_code, c.mobile, c.address, c.email 
-          FROM quotation_master q
-          LEFT JOIN customers c ON q.customer_id = c.id
-          WHERE q.id = $quotation_id";
+$where_clause = $quotation_id > 0 ? "q.id = $quotation_id" : "q.quotation_no = '$quotation_no'";
+
+// Check if payment columns exist in quotation_master
+$col_check = mysqli_query($conn, "SHOW COLUMNS FROM quotation_master LIKE 'bank_account_id'");
+$has_payment_cols = ($col_check && mysqli_num_rows($col_check) > 0);
+
+if($has_payment_cols) {
+    $query = "SELECT q.*, c.customer_name, c.customer_code, c.mobile, c.address, c.email, c.current_balance, b.bank_name, b.account_number 
+              FROM quotation_master q
+              LEFT JOIN customers c ON q.customer_id = c.id
+              LEFT JOIN bank_accounts b ON q.bank_account_id = b.id
+              WHERE $where_clause";
+} else {
+    $query = "SELECT q.*, c.customer_name, c.customer_code, c.mobile, c.address, c.email, c.current_balance
+              FROM quotation_master q
+              LEFT JOIN customers c ON q.customer_id = c.id
+              WHERE $where_clause";
+}
 $result = mysqli_query($conn, $query);
 
 if(mysqli_num_rows($result) == 0) {
@@ -33,6 +48,25 @@ if(mysqli_num_rows($result) == 0) {
 }
 
 $quotation = mysqli_fetch_assoc($result);
+$quotation_id = $quotation['id'];
+
+// Balance calculations
+$current_balance = floatval($quotation['current_balance'] ?? 0);
+$remaining_amount = floatval($quotation['remaining_amount'] ?? $quotation['grand_total']);
+$received_amount = floatval($quotation['received_amount'] ?? 0);
+$previous_balance = $current_balance - $remaining_amount;
+$new_balance = $current_balance;
+
+// Payment method display
+$payment_type = $quotation['payment_type'] ?? 'credit';
+$payment_method_display = '';
+switch($payment_type) {
+    case 'cash': $payment_method_display = 'Cash'; break;
+    case 'bank': $payment_method_display = 'Bank Transfer' . (!empty($quotation['bank_name']) ? ' (' . $quotation['bank_name'] . ')' : ''); break;
+    case 'credit': $payment_method_display = 'Credit'; break;
+    case 'partial': $payment_method_display = 'Partial'; break;
+    default: $payment_method_display = ucfirst($payment_type);
+}
 
 // Fetch quotation details
 $details_query = "SELECT qd.*, p.product_name, p.product_code 
@@ -146,57 +180,64 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         .invoice-title .title-bar {
             flex: 0 0 70px;
             height: 3px;
+            background: linear-gradient(90deg, #1e7e34, transparent);
             border-radius: 2px;
         }
-        .title-bar-left { background: linear-gradient(to right, transparent, #1e7e34); }
-        .title-bar-right { background: linear-gradient(to left, transparent, #1e7e34); }
+        .invoice-title .title-bar-left {
+            background: linear-gradient(90deg, transparent, #1e7e34);
+        }
 
-        /* ===== Info Grid ===== */
+        /* ===== Client Info Grid ===== */
         .info-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-        .info-item {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px 16px;
             background: #f8faf9;
-            border: 1px solid #e5e7eb;
-            border-left: 3px solid #1e7e34;
-            border-radius: 4px;
-            padding: 7px 12px;
+            border: 1px solid #d1e7dd;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
         }
+        .info-item { display: flex; flex-direction: column; }
         .info-label {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
             color: #6b7280;
-            letter-spacing: 1px;
-            min-width: 92px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .info-value {
+            font-size: 12.5px;
             font-weight: 600;
-            color: #111827;
-            word-break: break-word;
+            color: #1f2937;
         }
 
-        /* ===== Products Table ===== */
+        .remarks-box {
+            background: #fff8e1;
+            border-left: 3px solid #ffc107;
+            padding: 6px 12px;
+            margin-bottom: 14px;
+            font-size: 12px;
+            color: #495057;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* ===== Table ===== */
         .quotation-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11.5px;
-            margin-top: 4px;
+            margin-bottom: 16px;
+            font-size: 12px;
         }
         .quotation-table th {
             background: #1e7e34;
             color: #fff;
-            padding: 9px 6px;
-            text-align: center;
-            border: 1px solid #166d2e;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            text-align: center;
+            padding: 8px 6px;
+            border: 1px solid #1e7e34;
+            font-size: 11px;
+            letter-spacing: 0.3px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -215,33 +256,55 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             padding: 6px;
             font-weight: 500;
         }
-
-        /* ===== Totals ===== */
-        .totals-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            padding: 8px 15px;
+        .table-footer td {
             background: #e8f5e9;
-            border: 1px solid #a7d3a7;
-            border-radius: 5px;
-            font-weight: 600;
-            font-size: 12.5px;
+            font-weight: 700;
+            border-top: 2px solid #1e7e34;
         }
-        .grand-total-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-            padding: 11px 16px;
+
+        /* ===== Payment Breakdown ===== */
+        .payment-breakdown {
+            width: 320px;
+            margin-left: auto;
+            border: 1px solid #d1e7dd;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            font-size: 12px;
+        }
+        .payment-head {
             background: #1e7e34;
             color: #fff;
-            border-radius: 6px;
+            padding: 6px 12px;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .grand-total { font-size: 16px; font-weight: 700; }
-        .grand-total-section .remarks-text { font-size: 12px; }
+        .payment-body { padding: 8px 12px; background: #fafdfb; }
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .payment-row:last-child { border-bottom: none; }
+        .payment-label { color: #4b5563; }
+        .payment-value { font-weight: 600; color: #111827; }
+        .grand-total-row {
+            border-top: 2px solid #1e7e34;
+            border-bottom: 2px solid #1e7e34;
+            padding: 6px 0;
+            margin: 4px 0;
+        }
+        .grand-total-row .payment-label,
+        .grand-total-row .payment-value {
+            font-weight: 700;
+            color: #14532d;
+            font-size: 13px;
+        }
 
         /* ===== Footer ===== */
         .invoice-footer {
@@ -317,8 +380,8 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     <!-- Client Information Grid -->
     <div class="info-grid">
         <div class="info-item">
-            <span class="info-label">Client Name</span>
-            <span class="info-value"><?php echo trim(htmlspecialchars($quotation['customer_name'])); ?></span>
+            <span class="info-label">Customer Name</span>
+            <span class="info-value"><?php echo trim(htmlspecialchars($quotation['customer_name'] ?? 'Walk-In')); ?></span>
         </div>
         <div class="info-item">
             <span class="info-label">Quotation No</span>
@@ -333,14 +396,20 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             <span class="info-value"><?php echo date('d-m-Y', strtotime($quotation['quotation_date'])); ?></span>
         </div>
         <div class="info-item">
-            <span class="info-label">Mobile</span>
-            <span class="info-value"><?php echo $quotation['mobile']; ?></span>
+            <span class="info-label">Payment Method</span>
+            <span class="info-value"><?php echo $payment_method_display; ?></span>
         </div>
         <div class="info-item">
             <span class="info-label">Valid Until</span>
             <span class="info-value"><?php echo $quotation['valid_until'] ? date('d-m-Y', strtotime($quotation['valid_until'])) : '-'; ?></span>
         </div>
     </div>
+    
+    <?php if(!empty($quotation['remarks'])): ?>
+    <div class="remarks-box">
+        <strong>Remarks:</strong> <?php echo htmlspecialchars($quotation['remarks']); ?>
+    </div>
+    <?php endif; ?>
     
     <!-- Products Table -->
     <table class="quotation-table">
@@ -368,48 +437,85 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             if(empty($products_list)):
             ?>
             <tr>
-                <td colspan="9" class="text-center">No products found for this quotation.</td>
+                <td colspan="8" class="text-center">No products found for this quotation.</td>
             </tr>
             <?php else: ?>
                 <?php foreach($products_list as $detail): 
                     $client_h = floatval($detail['client_height'] ?? 0);
                     $client_w = floatval($detail['client_width'] ?? 0);
                     $qty = floatval($detail['quantity'] ?? 0);
-                    $unit_area = floatval($detail['area'] ?? 0);
-                    $total_area = $unit_area * $qty;
-                    $unit_price = floatval($detail['unit_price'] ?? 0);
-                    $amount = floatval($detail['net_amount'] ?? 0);
+                    $total_area = floatval($detail['area'] ?? 0);
+                    if($total_area <= 0) {
+                        $total_area = floatval($detail['total_area'] ?? 0);
+                    }
+                    $rate = floatval($detail['rate'] > 0 ? $detail['rate'] : ($detail['unit_price'] ?? 0));
+                    $amount = floatval($detail['net_amount'] > 0 ? $detail['net_amount'] : ($detail['amount'] ?? 0));
                     
                     $total_total_area += $total_area;
                     $total_total_price += $amount;
                 ?>
                 <tr>
                     <td class="text-center"><?php echo $sr++; ?></td>
-                    <td class="text-center"><?php echo number_format($client_h, 1); ?></td>
-                    <td class="text-center"><?php echo number_format($client_w, 1); ?></td>
+                    <td class="text-center"><?php echo $client_h > 0 ? number_format($client_h, 1) : '-'; ?></td>
+                    <td class="text-center"><?php echo $client_w > 0 ? number_format($client_w, 1) : '-'; ?></td>
                     <td class="text-center"><?php echo number_format($qty, 0); ?></td>
                     <td class="text-right"><?php echo number_format($total_area, 2); ?></td>
                     <td class="text-center"><?php echo htmlspecialchars($detail['product_name']); ?></td>
-                    <td class="text-right"><?php echo number_format($unit_price, 0); ?></td>
+                    <td class="text-right"><?php echo number_format($rate, 0); ?></td>
                     <td class="text-right"><?php echo number_format($amount, 2); ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
         </tbody>
+        <tfoot>
+            <tr class="table-footer">
+                <td colspan="4" class="text-right"><strong>Totals:</strong></td>
+                <td class="text-right"><strong><?php echo number_format($total_total_area, 2); ?></strong></td>
+                <td></td><td></td>
+                <td class="text-right"><strong><?php echo number_format($total_total_price, 2); ?></strong></td>
+            </tr>
+        </tfoot>
     </table>
     
-    <!-- Totals Row (outside table) -->
-    <div class="totals-row">
-        <span>Total Area: <?php echo number_format($total_total_area, 2); ?> sq ft</span>
-        <span>Total Price: <?php echo number_format($total_total_price, 2); ?> PKR</span>
-    </div>
-    
-    <!-- Grand Total and Remarks -->
-    <div class="grand-total-section">
-        <div class="grand-total">Grand Total: <?php echo number_format($quotation['grand_total'], 2); ?> PKR</div>
-        <?php if(!empty($quotation['remarks'])): ?>
-        <div class="remarks-text"><strong>Remarks:</strong> <?php echo nl2br(htmlspecialchars($quotation['remarks'])); ?></div>
-        <?php endif; ?>
+    <!-- Payment Breakdown Section (Matching Sales Style) -->
+    <div class="payment-breakdown">
+        <div class="payment-head">QUOTATION SUMMARY</div>
+        <div class="payment-body">
+            <div class="payment-row">
+                <span class="payment-label">Previous Balance:</span>
+                <span class="payment-value">Rs <?php echo number_format($previous_balance, 2); ?></span>
+            </div>
+            <div class="payment-row">
+                <span class="payment-label">Subtotal:</span>
+                <span class="payment-value">Rs <?php echo number_format($quotation['subtotal'], 2); ?></span>
+            </div>
+            <div class="payment-row">
+                <span class="payment-label">Discount (<?php echo number_format($quotation['discount_percentage'], 2); ?>%):</span>
+                <span class="payment-value">- Rs <?php echo number_format($quotation['discount_amount'], 2); ?></span>
+            </div>
+            <div class="payment-row">
+                <span class="payment-label">Other Charges:</span>
+                <span class="payment-value">+ Rs <?php echo number_format($quotation['other_charges'], 2); ?></span>
+            </div>
+            <div class="payment-row grand-total-row">
+                <span class="payment-label">Grand Total:</span>
+                <span class="payment-value">Rs <?php echo number_format($quotation['grand_total'], 2); ?></span>
+            </div>
+            <?php if($received_amount > 0): ?>
+            <div class="payment-row">
+                <span class="payment-label">Advance / Paid:</span>
+                <span class="payment-value">Rs <?php echo number_format($received_amount, 2); ?></span>
+            </div>
+            <div class="payment-row">
+                <span class="payment-label">Remaining:</span>
+                <span class="payment-value">Rs <?php echo number_format($remaining_amount, 2); ?></span>
+            </div>
+            <?php endif; ?>
+            <div class="payment-row grand-total-row">
+                <span class="payment-label">New Balance:</span>
+                <span class="payment-value">Rs <?php echo number_format($new_balance, 2); ?></span>
+            </div>
+        </div>
     </div>
     
     <!-- Footer -->

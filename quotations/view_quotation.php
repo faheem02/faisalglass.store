@@ -3,7 +3,7 @@
  * View Quotations Page
  * Faysal Glass And Aluminium Centre
  * 
- * Display all quotations with status badges including Hold
+ * Display all quotations with status badges including Hold & Payment Details
  * Page: View Quotations
  */
 
@@ -34,7 +34,7 @@ if(isset($_GET['delete_id'])) {
             $pid = intval($det['product_id']);
             $total_area = floatval($det['area']) * floatval($det['quantity']);
             
-            // Only reverse stock if this quotation actually deducted it (skips pre-posting legacy quotations)
+            // Only reverse stock if this quotation actually deducted it
             $posted_q = "SELECT id FROM inventory_ledger WHERE reference_type = 'QUOTATION' AND reference_id = $delete_id AND product_id = $pid LIMIT 1";
             $posted_r = mysqli_query($conn, $posted_q);
             $posted = ($posted_r && mysqli_num_rows($posted_r) > 0);
@@ -73,6 +73,10 @@ if(isset($_GET['delete_id'])) {
                 throw new Exception("Failed to update customer balance: " . mysqli_error($conn));
             }
         }
+        
+        // 3. Remove cash/bank book entries
+        mysqli_query($conn, "DELETE FROM cash_book WHERE reference_type = 'QUOTATION' AND reference_id = $delete_id");
+        mysqli_query($conn, "DELETE FROM bank_book WHERE reference_type = 'QUOTATION' AND reference_id = $delete_id");
         
         mysqli_query($conn, "DELETE FROM quotation_details WHERE quotation_id = $delete_id");
         mysqli_query($conn, "DELETE FROM quotation_master WHERE id = $delete_id");
@@ -214,32 +218,26 @@ $result = mysqli_query($conn, $query);
                                         <th>Date</th>
                                         <th>Customer</th>
                                         <th>Grand Total</th>
-                                        <th>Status</th>
+                                        <th>Received</th>
+                                        <th>Remaining</th>
+                                        <th>Payment Type</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php while($row = mysqli_fetch_assoc($result)): 
-                                        $status = $row['status'];
-                                        $status_class = 'status-draft';
-                                        if($status == 'hold') $status_class = 'status-hold';
-                                        elseif($status == 'pending') $status_class = 'status-pending';
-                                        elseif($status == 'approved') $status_class = 'status-approved';
-                                        elseif($status == 'rejected') $status_class = 'status-rejected';
-                                        elseif($status == 'converted') $status_class = 'status-converted';
-                                    ?>
+                                    <?php while($row = mysqli_fetch_assoc($result)): ?>
                                     <tr>
                                         <td><strong><?php echo htmlspecialchars($row['quotation_no']); ?></strong></td>
                                         <td><?php echo date('d-m-Y', strtotime($row['quotation_date'])); ?></td>
                                         <td>
-                                            <?php echo htmlspecialchars($row['customer_name']); ?>
-                                            <br><small class="text-muted"><?php echo $row['customer_code']; ?></small>
+                                            <?php echo htmlspecialchars($row['customer_name'] ?? 'Walk-In'); ?>
+                                            <?php if(!empty($row['customer_code'])): ?><br><small class="text-muted"><?php echo $row['customer_code']; ?></small><?php endif; ?>
                                         </td>
                                         <td class="text-right"><?php echo formatCurrency($row['grand_total']); ?></td>
+                                        <td class="text-right text-success"><?php echo formatCurrency($row['received_amount'] ?? 0); ?></td>
+                                        <td class="text-right text-danger"><?php echo formatCurrency($row['remaining_amount'] ?? $row['grand_total']); ?></td>
                                         <td>
-                                            <span class="status-badge <?php echo $status_class; ?>">
-                                                <?php echo ucfirst($status); ?>
-                                            </span>
+                                            <span class="badge badge-secondary text-uppercase"><?php echo htmlspecialchars($row['payment_type'] ?? 'credit'); ?></span>
                                         </td>
                                         <td class="action-buttons">
                                             <button class="btn btn-sm btn-info" onclick="openViewModal(<?php echo $row['id']; ?>)" title="View Quotation">
@@ -325,7 +323,7 @@ $(document).ready(function() {
 function confirmDelete(id) {
     Swal.fire({
         title: 'Are you sure?',
-        text: "This quotation will be permanently deleted!",
+        text: "This quotation will be permanently deleted! Stock and customer ledger will be restored.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
@@ -378,13 +376,14 @@ function openViewModal(id) {
             html += '</div>';
             
             html += '<div class="row mb-3">';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + c.customer_name + '</div><small class="text-muted">' + c.customer_code + '</small></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + c.customer_name + '</div><small class="text-muted">' + (c.customer_code || '') + '</small></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + (c.mobile || '-') + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Quotation Date</div><div class="view-info-value">' + q.quotation_date + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Valid Until</div><div class="view-info-value">' + (q.valid_until || '-') + '</div></div></div>';
-            html += '<div class="col-md-6 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + (c.address || '-') + '</div></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Reference No</div><div class="view-info-value">' + (q.reference_no || '-') + '</div></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Created By</div><div class="view-info-value">' + (response.created_by || '-') + '</div></div></div>';
+            html += '<div class="col-md-4 mb-2"><div class="view-info-card"><div class="view-info-label">Payment Method</div><div class="view-info-value text-uppercase">' + q.payment_type + (q.bank_name ? ' (' + q.bank_name + ')' : '') + '</div></div></div>';
+            html += '<div class="col-md-4 mb-2"><div class="view-info-card"><div class="view-info-label">Reference No</div><div class="view-info-value">' + (q.reference_no || '-') + '</div></div></div>';
+            html += '<div class="col-md-4 mb-2"><div class="view-info-card"><div class="view-info-label">Customer Balance</div><div class="view-info-value">₨ ' + formatNumber(c.current_balance) + '</div></div></div>';
+            html += '<div class="col-md-12 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + (c.address || '-') + '</div></div></div>';
             html += '</div>';
             
             if(response.items.length > 0) {
@@ -403,7 +402,8 @@ function openViewModal(id) {
                     var unitArea = parseFloat(item.area) || 0;
                     var qty = parseFloat(item.quantity) || 0;
                     var lineArea = unitArea * qty;
-                    var amount = parseFloat(item.net_amount) || parseFloat(item.amount) || 0;
+                    var rate = parseFloat(item.rate > 0 ? item.rate : item.unit_price) || 0;
+                    var amount = parseFloat(item.net_amount > 0 ? item.net_amount : item.amount) || 0;
                     totalArea += lineArea;
                     totalPrice += amount;
                     html += '<tr>';
@@ -413,7 +413,7 @@ function openViewModal(id) {
                     html += '<td class="text-center">' + qty + '</td>';
                     html += '<td class="text-right">' + formatNumber(lineArea) + '</td>';
                     html += '<td>' + (item.product_name || '-') + '</td>';
-                    html += '<td class="text-right">' + formatNumber(item.unit_price) + '</td>';
+                    html += '<td class="text-right">' + formatNumber(rate) + '</td>';
                     html += '<td class="text-center">' + (parseFloat(item.discount_percentage) || 0) + '%</td>';
                     html += '<td class="text-right"><strong>' + formatNumber(amount) + '</strong></td>';
                     html += '</tr>';
@@ -430,6 +430,10 @@ function openViewModal(id) {
                     html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Other Charges</span><span class="view-total-value">+ ' + formatNumber(q.other_charges) + '</span></div>';
                 }
                 html += '<div class="view-info-card view-grand-total mb-2 d-flex justify-content-between p-3"><span class="view-total-label">Grand Total</span><span class="view-total-value">' + formatNumber(q.grand_total) + '</span></div>';
+                if(q.received_amount > 0) {
+                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Advance / Paid</span><span class="view-total-value text-success">₨ ' + formatNumber(q.received_amount) + '</span></div>';
+                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Remaining Balance</span><span class="view-total-value text-danger">₨ ' + formatNumber(q.remaining_amount) + '</span></div>';
+                }
                 html += '</div></div>';
             } else {
                 html += '<div class="alert alert-info">No products found for this quotation.</div>';

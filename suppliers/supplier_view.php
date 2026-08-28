@@ -23,14 +23,9 @@ $error_msg = '';
 // Handle Delete Supplier
 if(isset($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
-    // Keep all purchase bills, cashbook and bank payment records 100% intact by unlinking supplier
-    mysqli_query($conn, "UPDATE purchase_master SET supplier_id = NULL WHERE supplier_id = $delete_id");
-    mysqli_query($conn, "UPDATE supplier_payments SET supplier_id = NULL WHERE supplier_id = $delete_id");
-    mysqli_query($conn, "UPDATE products SET supplier_id = NULL WHERE supplier_id = $delete_id");
-    mysqli_query($conn, "DELETE FROM supplier_ledger WHERE supplier_id = $delete_id");
     $delete_query = "DELETE FROM suppliers WHERE id = $delete_id";
     if(mysqli_query($conn, $delete_query)) {
-        $success_msg = "Supplier deleted successfully! (Purchase bills and payments record remain intact).";
+        $success_msg = "Supplier deleted successfully! All data (purchases, payments, ledger) remains intact.";
     } else {
         $error_msg = "Failed to delete supplier: " . mysqli_error($conn);
     }
@@ -599,7 +594,7 @@ function toggleStatus(id, currentStatus) {
 function confirmDelete(id) {
     Swal.fire({
         title: 'Are you sure?',
-        text: "You won't be able to revert this! This supplier will be deleted permanently.",
+        text: "Supplier will be deleted but all data (purchases, payments, ledger) will remain safe!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',

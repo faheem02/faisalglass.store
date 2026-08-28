@@ -20,6 +20,11 @@ $page_title = "Supplier Payment";
 $success_msg = '';
 $error_msg = '';
 
+// Payment history filters
+$hist_from   = isset($_GET['from_date'])        ? mysqli_real_escape_string($conn, $_GET['from_date'])        : date('Y-m-01');
+$hist_to     = isset($_GET['to_date'])          ? mysqli_real_escape_string($conn, $_GET['to_date'])          : date('Y-m-d');
+$hist_sup_id = isset($_GET['hist_supplier_id']) ? intval($_GET['hist_supplier_id']) : 0;
+
 // Check if supplier ID is provided
 if(!isset($_GET['id']) || empty($_GET['id'])) {
     header("Location: supplier_view.php");
@@ -73,6 +78,7 @@ if(isset($_POST['save_payment'])) {
     $payment_method = mysqli_real_escape_string($conn, $_POST['payment_method']);
     $bank_account_id = isset($_POST['bank_account_id']) ? intval($_POST['bank_account_id']) : 0;
     $reference_no = mysqli_real_escape_string($conn, trim($_POST['reference_no'] ?? ''));
+    $purchase_invoice_no = mysqli_real_escape_string($conn, trim($_POST['purchase_invoice_no'] ?? ''));
     $amount = floatval($_POST['amount']);
     $remarks = mysqli_real_escape_string($conn, trim($_POST['remarks']));
     
@@ -92,9 +98,9 @@ if(isset($_POST['save_payment'])) {
         try {
             // 1. Insert into supplier_payments
             $insert_payment = "INSERT INTO supplier_payments (payment_date, supplier_id, payment_method, 
-                              bank_account_id, reference_no, amount, remarks, created_by) 
+                              bank_account_id, reference_no, purchase_invoice_no, amount, remarks, created_by) 
                               VALUES ('$payment_date', '$supplier_id', '$payment_method', 
-                              '$bank_account_id', '$reference_no', '$amount', '$remarks', '{$_SESSION['user_id']}')";
+                              '$bank_account_id', '$reference_no', '$purchase_invoice_no', '$amount', '$remarks', '{$_SESSION['user_id']}')";
             
             if(!mysqli_query($conn, $insert_payment)) {
                 throw new Exception("Failed to save payment record");
@@ -172,7 +178,9 @@ if(isset($_POST['save_payment'])) {
             // Refresh balance
             $current_balance = $new_balance;
             
-            echo "<script>setTimeout(() => { window.location.href = 'supplier_detail.php?id=$supplier_id'; }, 2000);</script>";
+            // Redirect to print receipt
+            header("Location: print_payment_receipt.php?id=$payment_id");
+            exit();
             
         } catch (Exception $e) {
             mysqli_rollback($conn);
@@ -180,6 +188,28 @@ if(isset($_POST['save_payment'])) {
         }
     }
 }
+// Fetch suppliers for history dropdown
+$all_sup_q = "SELECT id, supplier_name, supplier_code FROM suppliers WHERE status=1 ORDER BY supplier_name";
+$all_sup_r = mysqli_query($conn, $all_sup_q);
+
+// Payment history query
+$hist_q = "SELECT p.*, s.supplier_name, s.supplier_code
+            FROM supplier_payments p
+            LEFT JOIN suppliers s ON p.supplier_id = s.id
+            WHERE DATE(p.payment_date) BETWEEN '$hist_from' AND '$hist_to'";
+if ($hist_sup_id > 0) $hist_q .= " AND p.supplier_id = $hist_sup_id";
+$hist_q .= " ORDER BY p.payment_date DESC, p.id DESC";
+$hist_r = mysqli_query($conn, $hist_q);
+
+$hist_sum_q = "SELECT SUM(amount) as total,
+               SUM(CASE WHEN payment_method='cash' THEN amount ELSE 0 END) as cash_total,
+               SUM(CASE WHEN payment_method='bank' THEN amount ELSE 0 END) as bank_total,
+               COUNT(*) as cnt
+               FROM supplier_payments p
+               WHERE DATE(p.payment_date) BETWEEN '$hist_from' AND '$hist_to'"
+             . ($hist_sup_id > 0 ? " AND p.supplier_id=$hist_sup_id" : "");
+$hist_sum_r   = mysqli_query($conn, $hist_sum_q);
+$hist_summary = mysqli_fetch_assoc($hist_sum_r);
 ?>
 
 <!DOCTYPE html>
@@ -197,6 +227,9 @@ if(isset($_POST['save_payment'])) {
     
     <!-- SB Admin 2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" rel="stylesheet">
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -389,7 +422,15 @@ if(isset($_POST['save_payment'])) {
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><i class="fas fa-file-invoice text-success mr-1"></i> Purchase Invoice No (Against which payment)</label>
+                                <input type="text" name="purchase_invoice_no" class="form-control" 
+                                       placeholder="e.g. PUR-0001 (optional)">
+                                <small class="text-muted">Enter the purchase invoice number this payment is against</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="form-group">
                                 <label><i class="fas fa-comment text-success mr-1"></i> Remarks (Optional)</label>
                                 <textarea name="remarks" class="form-control" rows="2" 
@@ -445,6 +486,163 @@ if(isset($_POST['save_payment'])) {
             </div>
         </div>
         
+        <!-- Payment History Section -->
+        <div class="mt-5">
+            <div class="d-sm-flex align-items-center justify-content-between mb-3">
+                <h4 class="mb-0 text-gray-800"><i class="fas fa-history text-success mr-2"></i> Supplier Payment History</h4>
+                <button class="btn btn-info btn-sm" onclick="window.open('print_payment_history.php?from_date=<?php echo urlencode($hist_from); ?>&to_date=<?php echo urlencode($hist_to); ?>&supplier_id=<?php echo $hist_sup_id; ?>','_blank','width=1000,height=750')">
+                    <i class="fas fa-print mr-1"></i> Print History
+                </button>
+            </div>
+
+            <!-- History Filter -->
+            <div class="card form-card">
+                <div class="card-header-custom"><i class="fas fa-filter mr-2"></i> Filter Payment History</div>
+                <div class="card-body">
+                    <form method="GET" action="" id="histFilterForm">
+                        <input type="hidden" name="id" value="<?php echo $supplier_id; ?>">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>From Date</label>
+                                    <input type="date" name="from_date" class="form-control" value="<?php echo $hist_from; ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>To Date</label>
+                                    <input type="date" name="to_date" class="form-control" value="<?php echo $hist_to; ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Supplier</label>
+                                    <select name="hist_supplier_id" class="form-control">
+                                        <option value="0">All Suppliers</option>
+                                        <?php
+                                        mysqli_data_seek($all_sup_r, 0);
+                                        while ($hs = mysqli_fetch_assoc($all_sup_r)): ?>
+                                        <option value="<?php echo $hs['id']; ?>" <?php echo ($hist_sup_id == $hs['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($hs['supplier_name'] . ' (' . $hs['supplier_code'] . ')'); ?>
+                                        </option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-green form-control"><i class="fas fa-search mr-1"></i> Filter</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="card shadow text-center p-3">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Paid</div>
+                        <div style="font-size:22px;font-weight:bold;color:#1e7e34;"><?php echo formatCurrency(floatval($hist_summary['total'])); ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow text-center p-3">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Cash Paid</div>
+                        <div style="font-size:22px;font-weight:bold;color:#28a745;"><?php echo formatCurrency(floatval($hist_summary['cash_total'])); ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow text-center p-3">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Bank Paid</div>
+                        <div style="font-size:22px;font-weight:bold;color:#0066cc;"><?php echo formatCurrency(floatval($hist_summary['bank_total'])); ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow text-center p-3">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Transactions</div>
+                        <div style="font-size:22px;font-weight:bold;color:#e67e22;"><?php echo intval($hist_summary['cnt']); ?></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="card form-card">
+                <div class="card-header-custom"><i class="fas fa-list mr-2"></i> Payment Transactions
+                    <span class="float-right">Period: <?php echo date('d-m-Y', strtotime($hist_from)); ?> to <?php echo date('d-m-Y', strtotime($hist_to)); ?></span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover" id="histTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Payment #</th>
+                                    <th>Date</th>
+                                    <th>Supplier Code</th>
+                                    <th>Supplier Name</th>
+                                    <th>Method</th>
+                                    <th>Reference No</th>
+                                    <th>Invoice No</th>
+                                    <th class="text-right">Amount</th>
+                                    <th>Remarks</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $hist_grand = 0;
+                                if ($hist_r && mysqli_num_rows($hist_r) > 0):
+                                    while ($hp = mysqli_fetch_assoc($hist_r)):
+                                        $hist_grand += floatval($hp['amount']);
+                                ?>
+                                <tr>
+                                    <td><strong class="text-primary">PAY-<?php echo str_pad($hp['id'], 4, '0', STR_PAD_LEFT); ?></strong></td>
+                                    <td><?php echo date('d-m-Y', strtotime($hp['payment_date'])); ?></td>
+                                    <td><?php echo htmlspecialchars($hp['supplier_code']); ?></td>
+                                    <td><strong><?php echo htmlspecialchars($hp['supplier_name']); ?></strong></td>
+                                    <td>
+                                        <?php if ($hp['payment_method'] == 'cash'): ?>
+                                            <span class="badge badge-success"><i class="fas fa-money-bill-wave"></i> Cash</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-info"><i class="fas fa-university"></i> Bank</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($hp['reference_no']) ?: '-'; ?></td>
+                                    <td>
+                                        <?php if(!empty($hp['purchase_invoice_no'])): ?>
+                                            <span class="font-weight-bold text-warning"><?php echo htmlspecialchars($hp['purchase_invoice_no']); ?></span>
+                                        <?php else: ?>-<?php endif; ?>
+                                    </td>
+                                    <td class="text-right text-danger font-weight-bold"><?php echo formatCurrency(floatval($hp['amount'])); ?></td>
+                                    <td><?php echo htmlspecialchars($hp['remarks']) ?: '-'; ?></td>
+                                    <td class="text-center">
+                                        <a href="print_payment_receipt.php?id=<?php echo $hp['id']; ?>" target="_blank" class="btn btn-sm btn-primary" title="Print Receipt">
+                                            <i class="fas fa-print"></i> Print
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php endwhile; else: ?>
+                                <tr><td colspan="10" class="text-center py-4 text-muted">No payment records found for the selected period</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                            <?php if ($hist_r && mysqli_num_rows($hist_r) > 0): ?>
+                            <tfoot>
+                                <tr style="background:#f8f9fc;font-weight:bold;">
+                                    <td colspan="7" class="text-right"><strong>Total:</strong></td>
+                                    <td class="text-right text-danger"><strong><?php echo formatCurrency($hist_grand); ?></strong></td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                            <?php endif; ?>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End Payment History -->
+
     </div>
     
     <footer class="sticky-footer bg-white">
@@ -459,10 +657,18 @@ if(isset($_POST['save_payment'])) {
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
 
 <script>
 $(document).ready(function() {
+    $('#histTable').DataTable({
+        "order": [[0, "desc"]],
+        "pageLength": 25,
+        "language": { "search": "Search:", "zeroRecords": "No records found" }
+    });
+
     // Show/hide bank fields based on payment method
     $('#payment_method').on('change', function() {
         if($(this).val() === 'bank') {
