@@ -81,6 +81,9 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             @page { size: A4; margin: 12mm; }
             .invoice-table thead { display: table-header-group; }
             .invoice-table tr { page-break-inside: avoid; }
+            .product-group-row td { background-color: #eaf5eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .product-subtotal-row td { background-color: #f8faf9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table-footer td, .table-footer { background-color: #e8f5e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -167,35 +170,81 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         .title-bar-left { background: linear-gradient(to right, transparent, #1e7e34); }
         .title-bar-right { background: linear-gradient(to left, transparent, #1e7e34); }
 
-        /* ===== Info Grid ===== */
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 18px;
+        /* ===== Professional Invoice Meta Section ===== */
+        .invoice-meta-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+            padding: 10px 4px 14px 4px;
+            margin-bottom: 14px;
+            border-bottom: 1.5px solid #d1e7dd;
         }
-        .info-item {
+        .meta-customer-box {
+            flex: 1;
+            max-width: 58%;
+        }
+        .meta-sub-header {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1e7e34;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .meta-customer-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 3px;
+            line-height: 1.3;
+        }
+        .meta-customer-code {
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .meta-customer-detail {
+            font-size: 12px;
+            color: #374151;
+            line-height: 1.6;
             display: flex;
             align-items: baseline;
             gap: 8px;
-            background: #f8faf9;
-            border: 1px solid #e5e7eb;
-            border-left: 3px solid #1e7e34;
-            border-radius: 4px;
-            padding: 7px 12px;
         }
-        .info-label {
-            font-size: 10px;
-            font-weight: 700;
+        .meta-customer-detail i {
+            color: #1e7e34;
+            width: 14px;
+            font-size: 11px;
+        }
+        .meta-invoice-box {
+            min-width: 270px;
+        }
+        .meta-invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .meta-invoice-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #f0f3f2;
+        }
+        .meta-invoice-table tr:last-child td {
+            border-bottom: none;
+        }
+        .meta-invoice-table .meta-label {
+            font-weight: 600;
             color: #6b7280;
-            letter-spacing: 1px;
-            min-width: 92px;
             text-transform: uppercase;
+            font-size: 10.5px;
+            letter-spacing: 0.5px;
+            width: 45%;
         }
-        .info-value {
+        .meta-invoice-table .meta-value {
             font-weight: 600;
             color: #111827;
-            word-break: break-word;
+            text-align: right;
         }
 
         .remarks-box {
@@ -245,6 +294,47 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             background: #e8f5e9;
             font-weight: 700;
             border-top: 2px solid #1e7e34;
+        }
+        .product-group-row td {
+            background: #eaf5eb !important;
+            border-top: 2px solid #1e7e34 !important;
+            border-bottom: 1px solid #c3e6cb !important;
+            padding: 8px 10px !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .product-group-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 700;
+            color: #155724;
+        }
+        .product-group-badge {
+            background: #1e7e34;
+            color: #fff;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 6px;
+            display: inline-block;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .product-subtotal-row td {
+            background: #f8faf9 !important;
+            border-top: 1px solid #d1e7dd !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            font-weight: 700;
+            font-size: 11.5px;
+            color: #1b4332;
+            padding: 6px 8px !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         /* ===== Payment Summary ===== */
@@ -352,31 +442,46 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         <span class="title-bar title-bar-right"></span>
     </div>
     
-    <!-- Client Information Grid - Remaining line removed -->
-    <div class="info-grid">
-        <div class="info-item">
-            <span class="info-label">Customer Name</span>
-            <span class="info-value"><?php echo trim(htmlspecialchars($sale['customer_name'])); ?></span>
+    <!-- Professional Customer and Invoice Meta Section -->
+    <div class="invoice-meta-container">
+        <div class="meta-customer-box">
+            <div class="meta-sub-header">BILL TO</div>
+            <div class="meta-customer-name"><?php echo trim(htmlspecialchars($sale['customer_name'])); ?></div>
+            <?php if(!empty($sale['customer_code'])): ?>
+                <div class="meta-customer-code">Customer ID: <?php echo htmlspecialchars($sale['customer_code']); ?></div>
+            <?php endif; ?>
+            <?php if(!empty($sale['mobile'])): ?>
+                <div class="meta-customer-detail"><i class="fas fa-phone-alt"></i> <?php echo htmlspecialchars($sale['mobile']); ?></div>
+            <?php endif; ?>
+            <?php if(!empty($sale['address'])): ?>
+                <div class="meta-customer-detail"><i class="fas fa-map-marker-alt"></i> <?php echo trim(htmlspecialchars($sale['address'])); ?></div>
+            <?php endif; ?>
+            <?php if(!empty($sale['cnic'])): ?>
+                <div class="meta-customer-detail"><i class="fas fa-id-card"></i> CNIC: <?php echo htmlspecialchars($sale['cnic']); ?></div>
+            <?php endif; ?>
         </div>
-        <div class="info-item">
-            <span class="info-label">Invoice No</span>
-            <span class="info-value"><?php echo $sale['invoice_no']; ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Address</span>
-            <span class="info-value"><?php echo !empty($sale['address']) ? trim(htmlspecialchars($sale['address'])) : '-'; ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Date</span>
-            <span class="info-value"><?php echo date('d-m-Y', strtotime($sale['sale_date'])); ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Payment Method</span>
-            <span class="info-value"><?php echo $payment_method_display; ?></span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Bill Amount</span>
-            <span class="info-value">Rs <?php echo number_format($sale['grand_total'], 2); ?></span>
+        
+        <div class="meta-invoice-box">
+            <table class="meta-invoice-table">
+                <tr>
+                    <td class="meta-label">Invoice No:</td>
+                    <td class="meta-value font-weight-bold text-success" style="font-size: 14px;"><?php echo $sale['invoice_no']; ?></td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Invoice Date:</td>
+                    <td class="meta-value"><?php echo date('d-m-Y', strtotime($sale['sale_date'])); ?></td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Payment Method:</td>
+                    <td class="meta-value"><?php echo $payment_method_display; ?></td>
+                </tr>
+                <?php if(!empty($sale['reference_no'])): ?>
+                <tr>
+                    <td class="meta-label">Reference No:</td>
+                    <td class="meta-value"><?php echo htmlspecialchars($sale['reference_no']); ?></td>
+                </tr>
+                <?php endif; ?>
+            </table>
         </div>
     </div>
     
@@ -386,40 +491,80 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     </div>
     <?php endif; ?>
     
-    <!-- Products Table with Area & Total Area Columns -->
+    <!-- Products Table with Product-Wise Grouping -->
     <table class="invoice-table">
         <thead>
             <tr>
-                <th rowspan="2" width="5%">SR #</th>
-                <th colspan="2">ACTUAL SIZE</th>
-                <th rowspan="2" width="7%">QTY</th>
-                <th rowspan="2" width="9%">Total Area (sq ft)</th>
-                <th rowspan="2" width="15%">GLASS TYPE</th>
-                <th rowspan="2" width="8%">PRICE</th>
-                <th rowspan="2" width="12%">TOTAL PRICE</th>
+                <th rowspan="2" style="width: 6%;">SR #</th>
+                <th colspan="2">ACTUAL SIZE (INCH)</th>
+                <th rowspan="2" style="width: 8%;">QTY</th>
+                <th rowspan="2" style="width: 14%;">Total Area (sq ft)</th>
+                <th rowspan="2" style="width: 12%;">RATE (₨)</th>
+                <th rowspan="2" style="width: 16%;">TOTAL AMOUNT (₨)</th>
             </tr>
             <tr class="size-subheader">
-                <th width="9%">HEIGHT</th>
-                <th width="9%">WIDTH</th>
+                <th style="width: 11%;">HEIGHT</th>
+                <th style="width: 11%;">WIDTH</th>
             </tr>
         </thead>
         <tbody>
             <?php 
+            // Group products by product_id
+            $grouped_products = [];
+            foreach($products_list as $detail) {
+                $pid = !empty($detail['product_id']) ? intval($detail['product_id']) : ($detail['product_name'] ?? 'general');
+                if(!isset($grouped_products[$pid])) {
+                    $grouped_products[$pid] = [
+                        'product_name' => !empty($detail['product_name']) ? $detail['product_name'] : 'General Product',
+                        'product_code' => $detail['product_code'] ?? '',
+                        'items' => [],
+                        'subtotal_qty' => 0,
+                        'subtotal_area' => 0,
+                        'subtotal_amount' => 0
+                    ];
+                }
+                $grouped_products[$pid]['items'][] = $detail;
+                $grouped_products[$pid]['subtotal_qty'] += floatval($detail['quantity'] ?? 0);
+                $grouped_products[$pid]['subtotal_area'] += floatval($detail['area'] ?? 0);
+                $grouped_products[$pid]['subtotal_amount'] += floatval($detail['amount'] ?? 0);
+            }
+
             $sr = 1;
+            $total_total_qty = 0;
             $total_total_area = 0;
             $total_total_price = 0;
             
-            // Display all products so table totals match the payment breakdown
-            foreach($products_list as $detail):
+            foreach($grouped_products as $group):
+                $total_total_qty += $group['subtotal_qty'];
+                $total_total_area += $group['subtotal_area'];
+                $total_total_price += $group['subtotal_amount'];
+            ?>
+            <!-- Product Header Row -->
+            <tr class="product-group-row">
+                <td colspan="7">
+                    <div class="product-group-title">
+                        <span>
+                            <span class="product-group-badge">Product</span>
+                            <strong><?php echo htmlspecialchars($group['product_name']); ?></strong>
+                            <?php if(!empty($group['product_code'])): ?>
+                                <small class="text-muted" style="font-weight: normal;">(<?php echo htmlspecialchars($group['product_code']); ?>)</small>
+                            <?php endif; ?>
+                        </span>
+                        <span style="font-size: 11px; font-weight: normal; color: #155724;">
+                            <?php echo count($group['items']); ?> <?php echo count($group['items']) === 1 ? 'size' : 'sizes'; ?>
+                        </span>
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Product Size Entries -->
+            <?php foreach($group['items'] as $detail):
                 $client_h = floatval($detail['client_height']);
                 $client_w = floatval($detail['client_width']);
                 $qty = floatval($detail['quantity']);
                 $total_area = floatval($detail['area']);
                 $rate = floatval($detail['rate']);
                 $amount = floatval($detail['amount']);
-                
-                $total_total_area += $total_area;
-                $total_total_price += $amount;
             ?>
             <tr>
                 <td class="text-center"><?php echo $sr++; ?></td>
@@ -427,20 +572,30 @@ while($detail = mysqli_fetch_assoc($details_result)) {
                 <td class="text-center"><?php echo $client_w > 0 ? number_format($client_w, 1) : '-'; ?></td>
                 <td class="text-center"><?php echo number_format($qty, 0); ?></td>
                 <td class="text-right"><?php echo number_format($total_area, 2); ?></td>
-                <td class="text-center"><?php echo htmlspecialchars($detail['product_name']); ?></td>
-                <td class="text-right"><?php echo number_format($rate, 0); ?></td>
+                <td class="text-right"><?php echo number_format($rate, 2); ?></td>
                 <td class="text-right"><?php echo number_format($amount, 2); ?></td>
             </tr>
-            <?php 
-            endforeach; 
-            ?>
+            <?php endforeach; ?>
+
+            <!-- Product Subtotal Row -->
+            <tr class="product-subtotal-row">
+                <td colspan="3" class="text-right">
+                    <strong>Total (<?php echo htmlspecialchars($group['product_name']); ?>):</strong>
+                </td>
+                <td class="text-center"><strong><?php echo number_format($group['subtotal_qty'], 0); ?></strong></td>
+                <td class="text-right"><strong><?php echo number_format($group['subtotal_area'], 2); ?> sq ft</strong></td>
+                <td></td>
+                <td class="text-right"><strong>Rs <?php echo number_format($group['subtotal_amount'], 2); ?></strong></td>
+            </tr>
+            <?php endforeach; ?>
         </tbody>
         <tfoot>
             <tr class="table-footer">
-                <td colspan="4" class="text-right"><strong>Totals:</strong></td>
-                <td class="text-right"><strong><?php echo number_format($total_total_area, 2); ?></strong></td>
-                <td></td><td></td>
-                <td class="text-right"><strong><?php echo number_format($total_total_price, 2); ?></strong></td>
+                <td colspan="3" class="text-right"><strong>Grand Totals:</strong></td>
+                <td class="text-center"><strong><?php echo number_format($total_total_qty, 0); ?></strong></td>
+                <td class="text-right"><strong><?php echo number_format($total_total_area, 2); ?> sq ft</strong></td>
+                <td></td>
+                <td class="text-right"><strong>Rs <?php echo number_format($total_total_price, 2); ?></strong></td>
             </tr>
         </tfoot>
     </table>

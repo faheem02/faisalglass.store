@@ -273,6 +273,7 @@ $current_balance = floatval($customer['current_balance']);
         .tb-payment { background: #d4edda; color: #155724; border: 1px solid #a3d9a5; }
         .tb-quotation { background: #e2e8f0; color: #374151; border: 1px solid #cbd5e1; }
         .tb-opening { background: #e3f2fd; color: #0066cc; border: 1px solid #bbdefb; }
+        .tb-adjustment { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .tb-other { background: #e2e8f0; color: #374151; border: 1px solid #cbd5e1; }
         .table-footer {
             background: #e8f5e9;
@@ -425,6 +426,8 @@ $current_balance = floatval($customer['current_balance']);
                         case 'SALE': $badge_class = 'tb-sale'; $type_label = 'Sale'; break;
                         case 'PAYMENT': $badge_class = 'tb-payment'; $type_label = 'Payment'; break;
                         case 'QUOTATION': $badge_class = 'tb-quotation'; $type_label = 'Quotation'; break;
+                        case 'ADJUSTMENT': $badge_class = 'tb-adjustment'; $type_label = 'Adjustment'; break;
+                        case 'MANUAL': $badge_class = 'tb-other'; $type_label = 'Manual'; break;
                         default: $type_label = $row['reference_type']; break;
                     }
             ?>

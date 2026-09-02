@@ -49,34 +49,32 @@ $ledger_query = "SELECT sl.*, pm.invoice_no
                  AND sl.date BETWEEN '$from_date' AND '$to_date'
                  ORDER BY sl.date ASC, sl.id ASC";
 $ledger_result = mysqli_query($conn, $ledger_query);
+$has_entries = ($ledger_result && mysqli_num_rows($ledger_result) > 0);
 
 // Calculate summary
 $summary_query = "SELECT 
-                    SUM(debit) as total_debit,
-                    SUM(credit) as total_credit
+                    COALESCE(SUM(debit), 0) as total_debit,
+                    COALESCE(SUM(credit), 0) as total_credit
                   FROM supplier_ledger 
                   WHERE supplier_id = $supplier_id 
                   AND date BETWEEN '$from_date' AND '$to_date'";
 $summary_result = mysqli_query($conn, $summary_query);
 $summary = mysqli_fetch_assoc($summary_result);
 
-$total_debit = floatval($summary['total_debit']);
-$total_credit = floatval($summary['total_credit']);
+$total_debit = floatval($summary['total_debit'] ?? 0);
+$total_credit = floatval($summary['total_credit'] ?? 0);
 
-// Get opening balance (before from_date)
-$opening_query = "SELECT balance FROM supplier_ledger 
+// Get opening balance (net before from_date: credit - debit)
+$opening_query = "SELECT COALESCE(SUM(credit) - SUM(debit), 0) as balance 
+                  FROM supplier_ledger 
                   WHERE supplier_id = $supplier_id 
-                  AND date < '$from_date' 
-                  ORDER BY date DESC, id DESC LIMIT 1";
+                  AND date < '$from_date'";
 $opening_result = mysqli_query($conn, $opening_query);
 $opening_balance = 0;
 if($opening_result && mysqli_num_rows($opening_result) > 0) {
     $opening_data = mysqli_fetch_assoc($opening_result);
     $opening_balance = floatval($opening_data['balance']);
-}
-
-// If no previous balance, get opening from opening entry
-if($opening_balance == 0) {
+} else {
     $opening_entry_query = "SELECT credit, debit FROM supplier_ledger 
                             WHERE supplier_id = $supplier_id 
                             AND reference_type = 'OPENING'
@@ -90,6 +88,10 @@ if($opening_balance == 0) {
 
 // Calculate closing balance
 $closing_balance = $opening_balance + $total_credit - $total_debit;
+
+// Get active bank accounts for modal
+$bank_query = "SELECT * FROM bank_accounts WHERE status = 1 ORDER BY bank_name";
+$bank_result = mysqli_query($conn, $bank_query);
 ?>
 
 <!DOCTYPE html>
@@ -109,7 +111,12 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
     
     <!-- DataTables CSS -->
+    <?php if($has_entries): ?>
     <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <?php endif; ?>
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -217,7 +224,13 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
                 <i class="fas fa-book text-success mr-2"></i> Supplier Ledger
             </h1>
             <div class="no-print">
-                <a href="supplier_detail.php?id=<?php echo $supplier_id; ?>" class="btn btn-secondary">
+                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#manualEntryModal">
+                    <i class="fas fa-plus-circle mr-1"></i> Manual Entry
+                </button>
+                <a href="credit_pay.php?supplier_id=<?php echo $supplier_id; ?>" class="btn btn-primary ml-2">
+                    <i class="fas fa-money-bill-wave mr-1"></i> Make Payment
+                </a>
+                <a href="supplier_detail.php?id=<?php echo $supplier_id; ?>" class="btn btn-secondary ml-2">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Detail
                 </a>
                 <button type="button" class="btn btn-info ml-2 print-btn" onclick="window.open('print_supplier_ledger.php?id=<?php echo $supplier_id; ?>&from_date=<?php echo $from_date; ?>&to_date=<?php echo $to_date; ?>', '_blank', 'width=1000,height=750')">
@@ -359,9 +372,22 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
                         <tbody>
                             <?php 
                             $running_balance = $opening_balance;
-                            if(mysqli_num_rows($ledger_result) > 0): 
+                            ?>
+                            <tr style="background:#f8f9fc;font-weight:600;">
+                                <td><?php echo date('d-m-Y', strtotime($from_date)); ?></td>
+                                <td><span class="badge badge-info">Opening</span></td>
+                                <td>-</td>
+                                <td><strong>Opening Balance</strong></td>
+                                <td class="text-right"><?php echo $opening_balance < 0 ? formatCurrency(abs($opening_balance)) : '-'; ?></td>
+                                <td class="text-right"><?php echo $opening_balance > 0 ? formatCurrency($opening_balance) : '-'; ?></td>
+                                <td class="text-right"><strong><?php echo formatCurrency(abs($running_balance)); ?> <?php echo $running_balance >= 0 ? '(Payable)' : '(Receivable)'; ?></strong></td>
+                            </tr>
+                            <?php
+                            if($has_entries): 
                                 while($entry = mysqli_fetch_assoc($ledger_result)):
-                                    $running_balance = $entry['balance'];
+                                    $debit = floatval($entry['debit']);
+                                    $credit = floatval($entry['credit']);
+                                    $running_balance = floatval($entry['balance']);
                             ?>
                             <tr>
                                 <td><?php echo date('d-m-Y', strtotime($entry['date'])); ?></td>
@@ -386,6 +412,10 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
                                             $badge_class = 'badge-warning';
                                             $type_label = 'Adjustment';
                                             break;
+                                        case 'MANUAL':
+                                            $badge_class = 'badge-dark';
+                                            $type_label = 'Manual';
+                                            break;
                                         default:
                                             $badge_class = 'badge-secondary';
                                             $type_label = $entry['reference_type'];
@@ -404,9 +434,9 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
                                         -
                                     <?php endif; ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($entry['description']); ?></td>
-                                <td class="text-right text-success"><?php echo $entry['debit'] > 0 ? formatCurrency($entry['debit']) : '-'; ?></td>
-                                <td class="text-right text-danger"><?php echo $entry['credit'] > 0 ? formatCurrency($entry['credit']) : '-'; ?></td>
+                                <td><?php echo nl2br(htmlspecialchars($entry['description'])); ?></td>
+                                <td class="text-right text-success"><?php echo $debit > 0 ? formatCurrency($debit) : '-'; ?></td>
+                                <td class="text-right text-danger"><?php echo $credit > 0 ? formatCurrency($credit) : '-'; ?></td>
                                 <td class="text-right">
                                     <strong>
                                         <?php 
@@ -426,7 +456,7 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
                             else: 
                             ?>
                             <tr>
-                                <td colspan="7" class="text-center">No ledger entries found for the selected period</td>
+                                <td colspan="7" class="text-center py-4">No ledger entries found for the selected period</td>
                             </tr>
                             <?php endif; ?>
                         </tbody>
@@ -492,38 +522,218 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
             </div>
         </div>
         
-    </div>
-    
-    <footer class="sticky-footer bg-white">
-        <div class="container my-auto">
-            <div class="copyright text-center my-auto">
-                <span>&copy; <?php echo date('Y'); ?> <?php echo $software_name; ?> - All Rights Reserved</span>
             </div>
+            <?php include('../includes/footer.php'); ?>
         </div>
-    </footer>
-    
+    </div>
+
+<!-- Modal for Manual Supplier Entry -->
+<div class="modal fade" id="manualEntryModal" tabindex="-1" role="dialog" aria-labelledby="manualEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <form id="manualEntryForm">
+                <input type="hidden" name="supplier_id" value="<?php echo $supplier_id; ?>">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title font-weight-bold" id="manualEntryModalLabel">
+                        <i class="fas fa-edit mr-2"></i> Supplier Manual Entry (Credit / Debit)
+                    </h5>
+                    <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 mb-3" style="font-size: 13px;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <strong>Credit (CR):</strong> Increases supplier payable (Company owes more).<br>
+                        <strong>Debit (DR):</strong> Decreases supplier payable (Company owes less / payment made).
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Entry Date <span class="text-danger">*</span></label>
+                        <input type="date" name="entry_date" id="entryDate" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Entry Type <span class="text-danger">*</span></label>
+                        <div class="d-flex">
+                            <div class="custom-control custom-radio mr-4">
+                                <input type="radio" id="typeCredit" name="entry_type" value="credit" class="custom-control-input" checked>
+                                <label class="custom-control-label text-danger font-weight-bold" for="typeCredit">
+                                    <i class="fas fa-plus-circle text-danger mr-1"></i> Credit (CR - Increase Payable)
+                                </label>
+                            </div>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" id="typeDebit" name="entry_type" value="debit" class="custom-control-input">
+                                <label class="custom-control-label text-success font-weight-bold" for="typeDebit">
+                                    <i class="fas fa-minus-circle text-success mr-1"></i> Debit (DR - Decrease Payable)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Amount (Rs) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text font-weight-bold">Rs</span>
+                            </div>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="entryAmount" class="form-control font-weight-bold" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Payment / Settlement Method</label>
+                        <select name="payment_method" id="entryPaymentMethod" class="form-control">
+                            <option value="adjustment">Direct Ledger Adjustment (No Cash/Bank impact)</option>
+                            <option value="cash">Cash (Affect Cash Book)</option>
+                            <option value="bank">Bank Account (Affect Bank Book)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="bankAccountGroup" style="display:none;">
+                        <label class="font-weight-bold">Bank Account <span class="text-danger">*</span></label>
+                        <select name="bank_account_id" id="entryBankAccountId" class="form-control">
+                            <option value="">-- Select Bank Account --</option>
+                            <?php 
+                            if($bank_result && mysqli_num_rows($bank_result) > 0) {
+                                mysqli_data_seek($bank_result, 0);
+                                while($bank = mysqli_fetch_assoc($bank_result)) {
+                                    echo '<option value="' . $bank['id'] . '">' . htmlspecialchars($bank['bank_name'] . ' - ' . $bank['account_title'] . ' (' . $bank['account_number'] . ')') . '</option>';
+                                }
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Reference / Voucher # (Optional)</label>
+                        <input type="text" name="reference_no" id="entryReferenceNo" class="form-control" placeholder="e.g. ADJ-001, Bill #, Voucher #">
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">Description / Remarks <span class="text-danger">*</span></label>
+                        <textarea name="remarks" id="entryRemarks" class="form-control" rows="2" placeholder="Reason for debit/credit entry..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" id="saveManualEntryBtn" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i> Save Entry
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php if($has_entries): ?>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
+<?php endif; ?>
 
 <script>
 $(document).ready(function() {
-    $('#ledgerTable').DataTable({
-        "order": [[0, "asc"]],
-        "pageLength": 25,
-        "language": {
-            "search": "Search:",
-            "lengthMenu": "Show _MENU_ entries",
-            "info": "Showing _START_ to _END_ of _TOTAL_ entries",
-            "infoEmpty": "Showing 0 to 0 of 0 entries",
-            "infoFiltered": "(filtered from _MAX_ total entries)",
-            "zeroRecords": "No entries found"
+    // Toggle bank account select
+    $('#entryPaymentMethod').on('change', function() {
+        if ($(this).val() === 'bank') {
+            $('#bankAccountGroup').slideDown();
+            $('#entryBankAccountId').prop('required', true);
+        } else {
+            $('#bankAccountGroup').slideUp();
+            $('#entryBankAccountId').prop('required', false).val('');
         }
     });
+
+    // Manual entry form submission
+    $('#manualEntryForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var amount = parseFloat($('#entryAmount').val());
+        if (isNaN(amount) || amount <= 0) {
+            Swal.fire('Error', 'Please enter a valid amount greater than zero.', 'error');
+            return;
+        }
+
+        var remarks = $('#entryRemarks').val().trim();
+        if (!remarks) {
+            Swal.fire('Error', 'Please enter a description / remarks.', 'error');
+            return;
+        }
+
+        var paymentMethod = $('#entryPaymentMethod').val();
+        if (paymentMethod === 'bank' && !$('#entryBankAccountId').val()) {
+            Swal.fire('Error', 'Please select a bank account.', 'error');
+            return;
+        }
+
+        var entryType = $('input[name="entry_type"]:checked').val();
+        var typeText = entryType === 'credit' ? 'Credit (CR - Increase Payable)' : 'Debit (DR - Decrease Payable)';
+
+        Swal.fire({
+            title: 'Confirm Manual Entry',
+            html: `Are you sure you want to record this <b>${typeText}</b> entry of <b>Rs. ${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</b>?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#1e7e34',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, Save Entry'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#saveManualEntryBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                
+                $.ajax({
+                    url: 'save_manual_entry.php',
+                    type: 'POST',
+                    data: $('#manualEntryForm').serialize(),
+                    dataType: 'json',
+                    success: function(res) {
+                        $('#saveManualEntryBtn').prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Entry');
+                        if (res.success) {
+                            $('#manualEntryModal').modal('hide');
+                            Swal.fire({
+                                title: 'Success!',
+                                text: res.message,
+                                icon: 'success',
+                                confirmButtonColor: '#1e7e34'
+                            }).then(() => {
+                                var entryDate = $('#entryDate').val();
+                                var curFrom = '<?php echo $from_date; ?>';
+                                var curTo = '<?php echo $to_date; ?>';
+                                if (entryDate < curFrom || entryDate > curTo) {
+                                    var newFrom = entryDate < curFrom ? entryDate : curFrom;
+                                    var newTo = entryDate > curTo ? entryDate : curTo;
+                                    window.location.href = 'supplier_ledger.php?id=<?php echo $supplier_id; ?>&from_date=' + newFrom + '&to_date=' + newTo;
+                                } else {
+                                    location.reload();
+                                }
+                            });
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#saveManualEntryBtn').prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Entry');
+                        Swal.fire('Error', 'An error occurred while saving entry: ' + error, 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // Initialize DataTable last so a rendering error never blocks the
+    // bank-toggle / manual-entry handlers above. Only loads when the ledger
+    // has rows for the period (empty ledgers skip the CDN files entirely).
+    <?php if($has_entries): ?>
+    try {
+        $('#ledgerTable').DataTable({
+            "order": [[0, "asc"]],
+            "pageLength": 25,
+            "language": {
+                "search": "Search:",
+                "lengthMenu": "Show _MENU_ entries",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                "infoEmpty": "Showing 0 to 0 of 0 entries",
+                "infoFiltered": "(filtered from _MAX_ total entries)",
+                "zeroRecords": "No entries found"
+            }
+        });
+    } catch(e) {
+        console.warn('DataTable init skipped:', e);
+    }
+    <?php endif; ?>
 });
 
 // Export to CSV
@@ -562,5 +772,3 @@ $('#exportBtn').on('click', function() {
 
 </body>
 </html>
-
-<?php mysqli_close($conn); ?>

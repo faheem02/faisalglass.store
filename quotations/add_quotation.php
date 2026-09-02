@@ -339,6 +339,9 @@ $bank_result = mysqli_query($conn, $bank_query);
                                             <div class="row"><div class="col-6">Quotation Amount:</div><div class="col-6 text-right"><strong id="quotationAmount">₨ 0.00</strong></div></div>
                                         </div>
                                         <div class="calculation-row">
+                                            <div class="row"><div class="col-6">Remaining Bill:</div><div class="col-6 text-right"><strong id="remainingBill" style="color:#dc3545;">₨ 0.00</strong></div></div>
+                                        </div>
+                                        <div class="calculation-row">
                                             <div class="row"><div class="col-6">Balance After Quotation:</div><div class="col-6 text-right"><strong id="newBalance" style="font-size:16px;">₨ 0.00</strong></div></div>
                                         </div>
                                     </div>
@@ -359,6 +362,8 @@ $bank_result = mysqli_query($conn, $bank_query);
                     <input type="hidden" name="subtotal" id="subtotal_input" value="0">
                     <input type="hidden" name="discount_amount" id="discount_amount_input" value="0">
                     <input type="hidden" name="grand_total" id="grand_total_input" value="0">
+                    <input type="hidden" name="remaining_amount" id="remaining_amount_input" value="0">
+                    <input type="hidden" name="quotation_status" id="quotation_status" value="draft">
                 </form>
                 
             </div>
@@ -454,16 +459,38 @@ function calculateTotals() {
     var otherCharges = parseFloat($('#other_charges').val()) || 0;
     var grandTotal = afterGlobalDiscount + otherCharges;
     var prevBalance = parseFloat($('#prevBalance').data('value')) || 0;
-    var newBalance = prevBalance + grandTotal;
+    var paymentType = $('#payment_type').val();
+    var receivedAmount = parseFloat($('#received_amount').val()) || 0;
+    var remainingAmount = 0;
+    
+    if(paymentType === 'cash' || paymentType === 'bank') {
+        remainingAmount = 0;
+        receivedAmount = grandTotal;
+        $('#received_amount').val(receivedAmount.toFixed(2));
+    } else if(paymentType === 'credit') {
+        remainingAmount = grandTotal;
+        receivedAmount = 0;
+        $('#received_amount').val(0);
+    } else if(paymentType === 'partial') {
+        if(receivedAmount > grandTotal) {
+            receivedAmount = grandTotal;
+            $('#received_amount').val(receivedAmount.toFixed(2));
+        }
+        remainingAmount = Math.max(0, grandTotal - receivedAmount);
+    }
+    
+    var newBalance = prevBalance + remainingAmount;
     
     $('#subtotal').text('₨ ' + subtotal.toFixed(2));
     $('#discountAmount').text('₨ ' + globalDiscountAmt.toFixed(2));
     $('#grandTotal').text('₨ ' + grandTotal.toFixed(2));
     $('#quotationAmount').text('₨ ' + grandTotal.toFixed(2));
+    $('#remainingBill').text('₨ ' + remainingAmount.toFixed(2));
     $('#newBalance').text('₨ ' + newBalance.toFixed(2));
     $('#subtotal_input').val(subtotal.toFixed(2));
     $('#discount_amount_input').val(globalDiscountAmt.toFixed(2));
     $('#grand_total_input').val(grandTotal.toFixed(2));
+    $('#remaining_amount_input').val(remainingAmount.toFixed(2));
     
     if(newBalance > 0) $('#newBalance').css('color', '#dc3545');
     else if(newBalance < 0) $('#newBalance').css('color', '#28a745');
@@ -620,15 +647,31 @@ $(document).ready(function() {
         });
     });
     
-    $('#global_discount, #other_charges').on('keyup change', function() { calculateTotals(); });
+    $('#global_discount, #other_charges, #received_amount').on('keyup change', function() { calculateTotals(); });
     $('#addProductBtn').on('click', function() { addProductRow(); });
     $('#refreshBtn').on('click', function() { location.reload(); });
     
     // Payment method toggle
     $('#payment_type').on('change', function() {
         var pt = $(this).val();
-        if(pt === 'bank') { $('#bank_div').show(); } else { $('#bank_div').hide(); }
-        if(pt === 'cash' || pt === 'bank') { $('#advance_row').show(); } else { $('#advance_row').hide(); }
+        if(pt === 'bank') {
+            $('#bank_div').show();
+            $('select[name="bank_account_id"]').prop('required', true);
+        } else {
+            $('#bank_div').hide();
+            $('select[name="bank_account_id"]').prop('required', false).val('');
+        }
+        
+        if(pt === 'partial') {
+            $('#advance_row').show();
+            $('#received_amount').prop('readonly', false).focus();
+        } else if(pt === 'cash' || pt === 'bank') {
+            $('#advance_row').show();
+            $('#received_amount').prop('readonly', true);
+        } else { // credit
+            $('#advance_row').hide();
+            $('#received_amount').val(0);
+        }
         calculateTotals();
     });
     

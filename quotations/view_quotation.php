@@ -233,9 +233,17 @@ $result = mysqli_query($conn, $query);
                                             <?php echo htmlspecialchars($row['customer_name'] ?? 'Walk-In'); ?>
                                             <?php if(!empty($row['customer_code'])): ?><br><small class="text-muted"><?php echo $row['customer_code']; ?></small><?php endif; ?>
                                         </td>
-                                        <td class="text-right"><?php echo formatCurrency($row['grand_total']); ?></td>
-                                        <td class="text-right text-success"><?php echo formatCurrency($row['received_amount'] ?? 0); ?></td>
-                                        <td class="text-right text-danger"><?php echo formatCurrency($row['remaining_amount'] ?? $row['grand_total']); ?></td>
+                                        <?php
+                                    $q_grand = floatval($row['grand_total'] ?? 0);
+                                    $q_received = floatval($row['received_amount'] ?? 0);
+                                    // Compute remaining when the stored value is empty/zero
+                                    $q_remaining = (isset($row['remaining_amount']) && $row['remaining_amount'] !== null && floatval($row['remaining_amount']) > 0)
+                                        ? floatval($row['remaining_amount'])
+                                        : max(0, $q_grand - $q_received);
+                                    ?>
+                                    <td class="text-right"><?php echo formatCurrency($q_grand); ?></td>
+                                        <td class="text-right text-success"><?php echo formatCurrency($q_received); ?></td>
+                                        <td class="text-right text-danger"><?php echo formatCurrency($q_remaining); ?></td>
                                         <td>
                                             <span class="badge badge-secondary text-uppercase"><?php echo htmlspecialchars($row['payment_type'] ?? 'credit'); ?></span>
                                         </td>
@@ -429,11 +437,10 @@ function openViewModal(id) {
                 if(q.other_charges > 0) {
                     html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Other Charges</span><span class="view-total-value">+ ' + formatNumber(q.other_charges) + '</span></div>';
                 }
-                html += '<div class="view-info-card view-grand-total mb-2 d-flex justify-content-between p-3"><span class="view-total-label">Grand Total</span><span class="view-total-value">' + formatNumber(q.grand_total) + '</span></div>';
-                if(q.received_amount > 0) {
-                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Advance / Paid</span><span class="view-total-value text-success">₨ ' + formatNumber(q.received_amount) + '</span></div>';
-                    html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Remaining Balance</span><span class="view-total-value text-danger">₨ ' + formatNumber(q.remaining_amount) + '</span></div>';
-                }
+                html += '<div class="view-info-card view-grand-total mb-2 d-flex justify-content-between p-3"><span class="view-total-label">Grand Total</span><span class="view-total-value">₨ ' + formatNumber(q.grand_total) + '</span></div>';
+                html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Advance / Paid</span><span class="view-total-value text-success">₨ ' + formatNumber(q.received_amount || 0) + '</span></div>';
+                var remainingCalc = (q.remaining_amount != null && parseFloat(q.remaining_amount) > 0) ? parseFloat(q.remaining_amount) : Math.max(0, parseFloat(q.grand_total || 0) - parseFloat(q.received_amount || 0));
+                html += '<div class="view-info-card mb-2 d-flex justify-content-between"><span class="view-total-label">Remaining Balance</span><span class="view-total-value text-danger">₨ ' + formatNumber(remainingCalc) + '</span></div>';
                 html += '</div></div>';
             } else {
                 html += '<div class="alert alert-info">No products found for this quotation.</div>';

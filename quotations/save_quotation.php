@@ -70,7 +70,10 @@ if(isset($_POST['save_quotation'])) {
         $remaining_amount = 0;
         $received_amount = $grand_total;
     } else { // partial
-        $remaining_amount = $grand_total - $received_amount;
+        if($received_amount > $grand_total) {
+            $received_amount = $grand_total;
+        }
+        $remaining_amount = max(0, $grand_total - $received_amount);
     }
     
     // Parse product data

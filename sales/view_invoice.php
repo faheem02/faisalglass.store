@@ -91,6 +91,46 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
         .view-modal-table thead th { background-color: #1e7e34; color: white; font-weight: 600; font-size: 12px; text-align: center; border: none; }
         .view-modal-table td { vertical-align: middle; font-size: 13px; }
         .view-modal-table .size-subheader th { background: #0f6bb5; font-size: 10px; padding: 5px; font-weight: 500; }
+        .view-modal-table .product-group-row td {
+            background: #eaf5eb !important;
+            border-top: 2px solid #1e7e34 !important;
+            border-bottom: 1px solid #c3e6cb !important;
+            padding: 8px 12px;
+        }
+        .view-modal-table .product-group-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 700;
+            color: #155724;
+        }
+        .view-modal-table .product-group-badge {
+            background: #1e7e34;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-right: 6px;
+            display: inline-block;
+        }
+        .view-modal-table .product-subtotal-row td {
+            background: #f8faf9 !important;
+            border-top: 1px solid #d1e7dd !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            font-weight: 700;
+            color: #1b4332;
+            padding: 7px 8px;
+            font-size: 12px;
+        }
+        .view-modal-table .table-footer td {
+            background: #e8f5e9 !important;
+            font-weight: 700;
+            border-top: 2px solid #1e7e34;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body id="page-top"><div id="wrapper"><?php include('../includes/sidebar.php'); ?><div class="container-fluid">
@@ -102,7 +142,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 <div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-warning text-uppercase mb-1">Outstanding</div><div class="summary-number text-warning"><?php echo formatCurrency($summary['total_remaining'] ?? 0); ?></div><small><?php echo $summary['total_count'] ?? 0; ?> Invoices</small></div></div>
 </div>
 <div class="card form-card"><div class="card-header-custom"><i class="fas fa-filter mr-2"></i> Filter Sales</div><div class="card-body"><form method="GET" class="form-inline"><div class="row w-100"><div class="col-md-3"><input type="date" name="from_date" class="form-control w-100" value="<?php echo $from_date; ?>"></div><div class="col-md-3"><input type="date" name="to_date" class="form-control w-100" value="<?php echo $to_date; ?>"></div><div class="col-md-4"><select name="customer_id" class="form-control w-100"><option value="0">All Customers</option><?php while($c = mysqli_fetch_assoc($customers_result)): ?><option value="<?php echo $c['id']; ?>" <?php echo ($filter_customer == $c['id']) ? 'selected' : ''; ?>><?php echo $c['customer_name']; ?></option><?php endwhile; ?></select></div><div class="col-md-2"><button type="submit" class="btn btn-green w-100"><i class="fas fa-search"></i> Filter</button></div></div></form></div></div>
-<div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Payment Type</th><th>Reference No</th><th>Remarks</th><th>Actions</th></tr></thead><tbody>
+<div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Payment Type</th><th>Reference No</th><th>Remarks</th><th>Status</th><th>Actions</th></tr></thead><tbody>
 <?php while($sale = mysqli_fetch_assoc($sales_result)): ?>
 <tr>
     <td class="font-weight-bold text-primary"><?php echo $sale['invoice_no']; ?></td>
@@ -114,6 +154,19 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
     <td><?php echo ucfirst($sale['payment_type']); ?></td>
     <td><?php echo $sale['reference_no'] ? htmlspecialchars($sale['reference_no']) : '-'; ?></td>
     <td><?php echo $sale['remarks'] ? htmlspecialchars($sale['remarks']) : '-'; ?></td>
+    <td class="text-center"><?php
+        $pay_status = 'Pending';
+        if(floatval($sale['remaining_amount']) <= 0) { $pay_status = 'Paid'; }
+        elseif(floatval($sale['received_amount']) > 0) { $pay_status = 'Partial'; }
+        if($sale['refund_status'] == 'full') { $pay_status = 'Refund'; }
+        elseif($sale['refund_status'] == 'partial') { $pay_status = 'Refund (Part)'; }
+        elseif($sale['status'] == 0) { $pay_status = 'Cancelled'; }
+        if($pay_status == 'Paid') echo '<span class="badge-paid">'.$pay_status.'</span>';
+        elseif($pay_status == 'Partial') echo '<span class="badge-partial">'.$pay_status.'</span>';
+        elseif($pay_status == 'Refund' || $pay_status == 'Refund (Part)') echo '<span class="badge-refund">'.$pay_status.'</span>';
+        elseif($pay_status == 'Cancelled') echo '<span class="badge badge-danger" style="padding:5px 12px;border-radius:20px;">'.$pay_status.'</span>';
+        else echo '<span class="badge-pending">'.$pay_status.'</span>';
+    ?></td>
     <td>
         <div class="action-btns">
             <button class="btn btn-sm btn-info" title="View Sale" onclick="openViewModal(<?php echo $sale['id']; ?>)"><i class="fas fa-eye"></i></button>
@@ -158,6 +211,9 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 <script>
 $(document).ready(function(){
     $('#salesTable').DataTable({order:[[0,"desc"]],pageLength:25});
+    <?php if(isset($_GET['id']) && intval($_GET['id']) > 0): ?>
+    openViewModal(<?php echo intval($_GET['id']); ?>);
+    <?php endif; ?>
 });
 
 function confirmDelete(id){
@@ -171,6 +227,11 @@ function confirmDelete(id){
     }).then((result)=>{
         if(result.isConfirmed) window.location.href='view_invoice.php?delete_id='+id;
     });
+}
+
+function escapeHtml(str){
+    if(!str) return '';
+    return $('<div>').text(str).html();
 }
 
 function openViewModal(id){
@@ -193,49 +254,109 @@ function openViewModal(id){
             
             var html = '';
             html += '<div class="d-flex justify-content-between align-items-center mb-3">';
-            html += '<h5 class="mb-0"><strong>' + s.invoice_no + '</strong></h5>';
-            html += '<span class="badge badge-info" style="padding:6px 14px;border-radius:20px;font-size:12px;">' + s.status + '</span>';
+            html += '<h5 class="mb-0"><strong>' + escapeHtml(s.invoice_no) + '</strong></h5>';
+            html += '<span class="badge badge-info" style="padding:6px 14px;border-radius:20px;font-size:12px;">' + escapeHtml(s.status) + '</span>';
             html += '</div>';
             
             html += '<div class="row mb-3">';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + c.customer_name + '</div><small class="text-muted">' + c.customer_code + '</small></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + (c.mobile || '-') + '</div></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Sale Date</div><div class="view-info-value">' + s.sale_date + '</div></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Payment Method</div><div class="view-info-value">' + s.payment_type + '</div></div></div>';
-            html += '<div class="col-md-6 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + (c.address || '-') + '</div></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Reference No</div><div class="view-info-value">' + (s.reference_no || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + escapeHtml(c.customer_name) + '</div><small class="text-muted">' + escapeHtml(c.customer_code) + '</small></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + escapeHtml(c.mobile || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Sale Date</div><div class="view-info-value">' + escapeHtml(s.sale_date) + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Payment Method</div><div class="view-info-value">' + escapeHtml(s.payment_type) + '</div></div></div>';
+            html += '<div class="col-md-6 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + escapeHtml(c.address || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Reference No</div><div class="view-info-value">' + escapeHtml(s.reference_no || '-') + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Status</div><div class="view-info-value">' + (s.remaining_amount <= 0 ? 'Paid' : (s.received_amount > 0 ? 'Partial' : 'Pending')) + '</div></div></div>';
             html += '</div>';
             
             if(response.items.length > 0){
-                html += '<div class="table-responsive"><table class="table table-bordered view-modal-table">';
-                html += '<thead><tr>';
-                html += '<th rowspan="2" width="5%">SR #</th><th colspan="2">ACTUAL SIZE</th>';
-                html += '<th rowspan="2" width="7%">QTY</th><th rowspan="2" width="11%">Total Area (sq ft)</th>';
-                html += '<th rowspan="2" width="18%">GLASS TYPE</th><th rowspan="2" width="8%">PRICE</th>';
-                html += '<th rowspan="2" width="12%">TOTAL PRICE</th>';
-                html += '</tr><tr class="size-subheader"><th width="9%">HEIGHT</th><th width="9%">WIDTH</th></tr></thead><tbody>';
-                
-                var totalArea = 0;
-                var totalPrice = 0;
+                // Group items by product
+                var productGroups = {};
+                var groupOrder = [];
                 for(var i = 0; i < response.items.length; i++){
                     var item = response.items[i];
-                    var lineArea = parseFloat(item.area) || 0;
-                    var amount = parseFloat(item.amount) || 0;
-                    totalArea += lineArea;
-                    totalPrice += amount;
-                    html += '<tr>';
-                    html += '<td class="text-center">' + (i + 1) + '</td>';
-                    html += '<td class="text-center">' + (parseFloat(item.client_height) || 0) + '</td>';
-                    html += '<td class="text-center">' + (parseFloat(item.client_width) || 0) + '</td>';
-                    html += '<td class="text-center">' + (parseFloat(item.quantity) || 0) + '</td>';
-                    html += '<td class="text-right">' + formatCurrency(lineArea) + '</td>';
-                    html += '<td>' + (item.product_name || '-') + '</td>';
-                    html += '<td class="text-right">' + formatCurrency(item.rate) + '</td>';
-                    html += '<td class="text-right"><strong>' + formatCurrency(amount) + '</strong></td>';
+                    var pid = item.product_id ? item.product_id : (item.product_name || 'general');
+                    if(!productGroups[pid]){
+                        productGroups[pid] = {
+                            product_name: item.product_name || 'General Product',
+                            product_code: item.product_code || '',
+                            items: [],
+                            subtotal_qty: 0,
+                            subtotal_area: 0,
+                            subtotal_amount: 0
+                        };
+                        groupOrder.push(pid);
+                    }
+                    productGroups[pid].items.push(item);
+                    productGroups[pid].subtotal_qty += parseFloat(item.quantity) || 0;
+                    productGroups[pid].subtotal_area += parseFloat(item.area) || 0;
+                    productGroups[pid].subtotal_amount += parseFloat(item.amount) || 0;
+                }
+
+                html += '<div class="table-responsive"><table class="table table-bordered view-modal-table">';
+                html += '<thead><tr>';
+                html += '<th rowspan="2" width="6%">SR #</th><th colspan="2">ACTUAL SIZE (INCH)</th>';
+                html += '<th rowspan="2" width="8%">QTY</th><th rowspan="2" width="14%">Total Area (sq ft)</th>';
+                html += '<th rowspan="2" width="12%">PRICE (₨)</th>';
+                html += '<th rowspan="2" width="16%">TOTAL PRICE (₨)</th>';
+                html += '</tr><tr class="size-subheader"><th width="11%">HEIGHT</th><th width="11%">WIDTH</th></tr></thead><tbody>';
+                
+                var sr = 1;
+                var totalQty = 0;
+                var totalArea = 0;
+                var totalPrice = 0;
+
+                for(var g = 0; g < groupOrder.length; g++){
+                    var grp = productGroups[groupOrder[g]];
+                    totalQty += grp.subtotal_qty;
+                    totalArea += grp.subtotal_area;
+                    totalPrice += grp.subtotal_amount;
+
+                    // Product Header Row
+                    html += '<tr class="product-group-row"><td colspan="7">';
+                    html += '<div class="product-group-title">';
+                    html += '<span><span class="product-group-badge">Product</span><strong>' + escapeHtml(grp.product_name) + '</strong>' + (grp.product_code ? ' <small class="text-muted">(' + escapeHtml(grp.product_code) + ')</small>' : '') + '</span>';
+                    html += '<span style="font-size: 11px; font-weight: normal; color: #155724;">' + grp.items.length + (grp.items.length === 1 ? ' size' : ' sizes') + '</span>';
+                    html += '</div></td></tr>';
+
+                    // Size entries
+                    for(var i = 0; i < grp.items.length; i++){
+                        var itm = grp.items[i];
+                        var lineArea = parseFloat(itm.area) || 0;
+                        var amount = parseFloat(itm.amount) || 0;
+                        var clientH = parseFloat(itm.client_height) || 0;
+                        var clientW = parseFloat(itm.client_width) || 0;
+                        var qty = parseFloat(itm.quantity) || 0;
+                        var rate = parseFloat(itm.rate) || 0;
+
+                        html += '<tr>';
+                        html += '<td class="text-center">' + (sr++) + '</td>';
+                        html += '<td class="text-center">' + (clientH > 0 ? clientH.toFixed(1) : '-') + '</td>';
+                        html += '<td class="text-center">' + (clientW > 0 ? clientW.toFixed(1) : '-') + '</td>';
+                        html += '<td class="text-center">' + qty + '</td>';
+                        html += '<td class="text-right">' + lineArea.toFixed(2) + '</td>';
+                        html += '<td class="text-right">' + formatCurrency(rate) + '</td>';
+                        html += '<td class="text-right"><strong>' + formatCurrency(amount) + '</strong></td>';
+                        html += '</tr>';
+                    }
+
+                    // Product Subtotal Row
+                    html += '<tr class="product-subtotal-row">';
+                    html += '<td colspan="3" class="text-right"><strong>Total (' + escapeHtml(grp.product_name) + '):</strong></td>';
+                    html += '<td class="text-center"><strong>' + grp.subtotal_qty + '</strong></td>';
+                    html += '<td class="text-right"><strong>' + grp.subtotal_area.toFixed(2) + ' sq ft</strong></td>';
+                    html += '<td></td>';
+                    html += '<td class="text-right"><strong>' + formatCurrency(grp.subtotal_amount) + '</strong></td>';
                     html += '</tr>';
                 }
-                html += '</tbody></table></div>';
+
+                html += '</tbody>';
+                html += '<tfoot><tr class="table-footer">';
+                html += '<td colspan="3" class="text-right"><strong>Grand Totals:</strong></td>';
+                html += '<td class="text-center"><strong>' + totalQty + '</strong></td>';
+                html += '<td class="text-right"><strong>' + totalArea.toFixed(2) + ' sq ft</strong></td>';
+                html += '<td></td>';
+                html += '<td class="text-right"><strong>' + formatCurrency(totalPrice) + '</strong></td>';
+                html += '</tr></tfoot></table></div>';
                 
                 html += '<div class="row justify-content-end">';
                 html += '<div class="col-md-5">';
@@ -255,7 +376,7 @@ function openViewModal(id){
             }
             
             if(s.remarks){
-                html += '<div class="alert alert-warning mb-0"><strong>Remarks:</strong> ' + s.remarks + '</div>';
+                html += '<div class="alert alert-warning mb-0"><strong>Remarks:</strong> ' + escapeHtml(s.remarks) + '</div>';
             }
             
             $('#viewSaleBody').html(html);

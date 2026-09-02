@@ -45,6 +45,24 @@ if(mysqli_num_rows($result) == 0) {
 
 $product = mysqli_fetch_assoc($result);
 
+// PRG success messages (shown after GET redirect so stock is added only once)
+if(isset($_GET['msg'])) {
+    switch($_GET['msg']) {
+        case 'updated':
+            $success_msg = "Product updated successfully!";
+            break;
+        case 'stock':
+            $success_msg = "Stock added successfully! New stock quantity: " . number_format(floatval($_GET['new'] ?? 0), 2) . " sq ft";
+            break;
+        case 'size':
+            $success_msg = "New size added successfully!";
+            if(isset($_GET['new']) && floatval($_GET['new']) > 0) {
+                $success_msg .= " Opening stock: " . number_format(floatval($_GET['new']), 2) . " sq ft";
+            }
+            break;
+    }
+}
+
 // Get current stock
 $stock_query = "SELECT balance_qty FROM inventory_ledger WHERE product_id = $product_id ORDER BY id DESC LIMIT 1";
 $stock_result = mysqli_query($conn, $stock_query);
@@ -123,17 +141,9 @@ if(isset($_POST['update_product'])) {
                             WHERE id = $product_id";
             
             if(mysqli_query($conn, $update_query)) {
-                $success_msg = "Product updated successfully!";
-                
-                // Update inventory ledger entries with new price (only future calculations)
-                // Note: Previous stock values remain with old price
-                
-                // Refresh product data
-                $refresh_query = "SELECT * FROM products WHERE id = $product_id";
-                $refresh_result = mysqli_query($conn, $refresh_query);
-                $product = mysqli_fetch_assoc($refresh_result);
-                
-                echo "<script>setTimeout(() => { window.location.href = 'addproduct.php'; }, 2000);</script>";
+                // GET redirect - never re-submits the POST (prevents stock/records from being re-added)
+                header("Location: edit_product.php?id=$product_id&msg=updated");
+                exit();
             } else {
                 $error_msg = "Failed to update product: " . mysqli_error($conn);
             }
@@ -194,11 +204,9 @@ if(isset($_POST['add_stock'])) {
                                   '" . mysqli_real_escape_string($conn, $remarks_text) . "')";
                 
                 if(mysqli_query($conn, $insert_ledger)) {
-                    $success_msg = "Stock added successfully! New stock quantity: " . number_format($new_balance, 2) . " sq ft";
-                    $current_stock = $new_balance;
-                    
-                    // Refresh page to show updated stock
-                    echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
+                    // GET redirect - prevents window.location.reload() from re-POSTing and doubling stock endlessly
+                    header("Location: edit_product.php?id=$product_id&msg=stock&new=$new_balance");
+                    exit();
                 } else {
                     $error_msg = "Failed to update inventory ledger!";
                 }
@@ -257,8 +265,10 @@ if(isset($_POST['add_size'])) {
                 $current_stock = $new_balance;
             }
             
-            $success_msg = "New size added successfully!" . ($size_opening_qty > 0 ? " Opening stock: " . number_format($current_stock, 2) . " sq ft" : "");
-            echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
+            $new_param = $size_opening_qty > 0 ? "&new=$current_stock" : "";
+            // GET redirect - prevents window.location.reload() from re-POSTing and duplicating the size/stock endlessly
+            header("Location: edit_product.php?id=$product_id&msg=size$new_param");
+            exit();
         } else {
             $error_msg = "Failed to add size: " . mysqli_error($conn);
         }

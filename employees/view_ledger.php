@@ -20,29 +20,23 @@ $page_title = "View Employee Ledger";
 $success_msg = '';
 $error_msg = '';
 
-// Handle Delete Employee
+// Handle Delete Employee (soft delete - deactivates the employee)
 if(isset($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
     
-    // Check if employee has salary or payment records
-    $check_salary = "SELECT id FROM employee_salary WHERE employee_id = $delete_id LIMIT 1";
-    $salary_result = mysqli_query($conn, $check_salary);
-    
-    $check_payments = "SELECT id FROM employee_payments WHERE employee_id = $delete_id LIMIT 1";
-    $payments_result = mysqli_query($conn, $check_payments);
-    
-    if(($salary_result && mysqli_num_rows($salary_result) > 0) || ($payments_result && mysqli_num_rows($payments_result) > 0)) {
-        $error_msg = "Cannot delete! This employee has salary or payment records.";
-    } else {
-        // Delete ledger entries first
-        mysqli_query($conn, "DELETE FROM employee_ledger WHERE employee_id = $delete_id");
-        // Delete employee
-        $delete_query = "DELETE FROM employees WHERE id = $delete_id";
-        if(mysqli_query($conn, $delete_query)) {
+    // Soft delete: deactivate instead of removing the row. Ledger, salary,
+    // payment and cashbook/bankbook records are kept intact (they stay visible
+    // in reports and ledgers). A hard DELETE would fail on servers where the
+    // employee_ledger table holds a foreign key (employee_ledger_ibfk_1).
+    $delete_query = "UPDATE employees SET status = 0 WHERE id = $delete_id AND status = 1";
+    if(mysqli_query($conn, $delete_query)) {
+        if(mysqli_affected_rows($conn) > 0) {
             $success_msg = "Employee deleted successfully!";
         } else {
-            $error_msg = "Failed to delete employee!";
+            $success_msg = "Employee is already deleted/inactive.";
         }
+    } else {
+        $error_msg = "Failed to delete employee!";
     }
 }
 
@@ -616,12 +610,12 @@ function toggleStatus(id, currentStatus) {
 function confirmDelete(id) {
     Swal.fire({
         title: 'Are you sure?',
-        text: "You won't be able to revert this! This employee will be deleted permanently.",
+        text: "This employee will be deactivated and removed from active lists. Ledger/salary/history will be preserved.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, delete it!',
+        confirmButtonText: 'Yes, deactivate!',
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {

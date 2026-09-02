@@ -52,8 +52,9 @@ $quotation_id = $quotation['id'];
 
 // Balance calculations
 $current_balance = floatval($quotation['current_balance'] ?? 0);
-$remaining_amount = floatval($quotation['remaining_amount'] ?? $quotation['grand_total']);
+$grand_total = floatval($quotation['grand_total'] ?? 0);
 $received_amount = floatval($quotation['received_amount'] ?? 0);
+$remaining_amount = (isset($quotation['remaining_amount']) && $quotation['remaining_amount'] !== null && floatval($quotation['remaining_amount']) > 0) ? floatval($quotation['remaining_amount']) : max(0, $grand_total - $received_amount);
 $previous_balance = $current_balance - $remaining_amount;
 $new_balance = $current_balance;
 
@@ -501,16 +502,14 @@ while($detail = mysqli_fetch_assoc($details_result)) {
                 <span class="payment-label">Grand Total:</span>
                 <span class="payment-value">Rs <?php echo number_format($quotation['grand_total'], 2); ?></span>
             </div>
-            <?php if($received_amount > 0): ?>
             <div class="payment-row">
                 <span class="payment-label">Advance / Paid:</span>
                 <span class="payment-value">Rs <?php echo number_format($received_amount, 2); ?></span>
             </div>
             <div class="payment-row">
-                <span class="payment-label">Remaining:</span>
+                <span class="payment-label">Remaining Bill:</span>
                 <span class="payment-value">Rs <?php echo number_format($remaining_amount, 2); ?></span>
             </div>
-            <?php endif; ?>
             <div class="payment-row grand-total-row">
                 <span class="payment-label">New Balance:</span>
                 <span class="payment-value">Rs <?php echo number_format($new_balance, 2); ?></span>

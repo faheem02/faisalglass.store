@@ -42,30 +42,28 @@ $ledger_result = mysqli_query($conn, $ledger_query);
 
 // Summary
 $summary_query = "SELECT 
-                    SUM(debit) as total_debit,
-                    SUM(credit) as total_credit
+                    COALESCE(SUM(debit), 0) as total_debit,
+                    COALESCE(SUM(credit), 0) as total_credit
                   FROM supplier_ledger 
                   WHERE supplier_id = $supplier_id 
                   AND date BETWEEN '$from_date' AND '$to_date'";
 $summary_result = mysqli_query($conn, $summary_query);
 $summary = mysqli_fetch_assoc($summary_result);
 
-$total_debit = floatval($summary['total_debit']);
-$total_credit = floatval($summary['total_credit']);
+$total_debit = floatval($summary['total_debit'] ?? 0);
+$total_credit = floatval($summary['total_credit'] ?? 0);
 
-// Opening balance (before from_date)
-$opening_query = "SELECT balance FROM supplier_ledger 
+// Opening balance (net before from_date: credit - debit)
+$opening_query = "SELECT COALESCE(SUM(credit) - SUM(debit), 0) as balance 
+                  FROM supplier_ledger 
                   WHERE supplier_id = $supplier_id 
-                  AND date < '$from_date' 
-                  ORDER BY date DESC, id DESC LIMIT 1";
+                  AND date < '$from_date'";
 $opening_result = mysqli_query($conn, $opening_query);
 $opening_balance = 0;
 if($opening_result && mysqli_num_rows($opening_result) > 0) {
     $opening_data = mysqli_fetch_assoc($opening_result);
     $opening_balance = floatval($opening_data['balance']);
-}
-
-if($opening_balance == 0) {
+} else {
     $opening_entry_query = "SELECT credit, debit FROM supplier_ledger 
                             WHERE supplier_id = $supplier_id 
                             AND reference_type = 'OPENING'
@@ -431,6 +429,7 @@ $closing_balance = $opening_balance + $total_credit - $total_debit;
                         case 'PURCHASE': $badge_class = 'tb-purchase'; $type_label = 'Purchase'; break;
                         case 'PAYMENT': $badge_class = 'tb-payment'; $type_label = 'Payment'; break;
                         case 'ADJUSTMENT': $badge_class = 'tb-adjustment'; $type_label = 'Adjustment'; break;
+                        case 'MANUAL': $badge_class = 'tb-adjustment'; $type_label = 'Manual'; break;
                         default: break;
                     }
             ?>

@@ -533,7 +533,7 @@ $headwise_result = mysqli_query($conn, $headwise_query);
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label><i class="fas fa-university text-success mr-1"></i> Bank Account</label>
-                                <select name="bank_account_id" class="form-control">
+                                <select name="bank_account_id" id="bank_account_id" class="form-control">
                                     <option value="">Select Bank Account</option>
                                     <?php while($bank = mysqli_fetch_assoc($bank_result)): ?>
                                         <option value="<?php echo $bank['id']; ?>">
@@ -846,17 +846,6 @@ $(document).ready(function() {
         });
     }
     
-    // Show/hide bank fields based on payment method
-    $('#payment_method').on('change', function() {
-        if($(this).val() === 'bank') {
-            $('#bank_row').show();
-        } else {
-            $('#bank_row').hide();
-            $('select[name="bank_account_id"]').val('');
-            $('input[name="reference_no"]').val('');
-        }
-    });
-    
     // Show/hide custom date range
     $('#filter_date').on('change', function() {
         if($(this).val() === 'custom') {
@@ -867,8 +856,23 @@ $(document).ready(function() {
             $('#to_date_div').hide();
         }
     });
-    
-    // Trigger on load
+});
+
+// Show/hide bank fields based on payment method
+// Bound in its own ready block so it always works even if DataTables init fails
+$(document).ready(function() {
+    $('#payment_method').on('change', function() {
+        if($(this).val() === 'bank') {
+            $('#bank_row').show();
+            $('select[name="bank_account_id"]').prop('disabled', false);
+        } else {
+            $('#bank_row').hide();
+            $('select[name="bank_account_id"]').val('').prop('disabled', true);
+            $('input[name="reference_no"]').val('');
+        }
+    });
+
+    // Trigger on load to set correct initial state (cash = hidden)
     $('#payment_method').trigger('change');
 });
 

@@ -18,49 +18,21 @@ include('../includes/txt.php');
 
 $page_title = "View Product List";
 
-// Handle Product Status Toggle (Activate/Deactivate)
-if(isset($_GET['toggle_status'])) {
-    $product_id = intval($_GET['toggle_status']);
-    $current_status = intval($_GET['current_status']);
+// Handle Product Status Toggle via POST AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_status') {
+    header('Content-Type: application/json; charset=utf-8');
+    $product_id = intval($_POST['id']);
+    $current_status = intval($_POST['current_status']);
     $new_status = $current_status == 1 ? 0 : 1;
     
     $update_query = "UPDATE products SET status = $new_status WHERE id = $product_id";
-    if(mysqli_query($conn, $update_query)) {
+    if (mysqli_query($conn, $update_query)) {
         $msg = $new_status == 1 ? "Product activated successfully!" : "Product deactivated successfully!";
-        echo "<script>Swal.fire({title: 'Success!', text: '$msg', icon: 'success', confirmButtonColor: '#1e7e34'});</script>";
+        echo json_encode(['success' => true, 'message' => $msg]);
     } else {
-        echo "<script>Swal.fire({title: 'Error!', text: 'Failed to update status!', icon: 'error', confirmButtonColor: '#1e7e34'});</script>";
+        echo json_encode(['success' => false, 'message' => 'Failed to update status: ' . mysqli_error($conn)]);
     }
-}
-
-// Handle Delete Product
-if(isset($_GET['delete_id'])) {
-    $delete_id = intval($_GET['delete_id']);
-    
-    // Check if product has sales or purchases
-    $check_sales = "SELECT id FROM sale_details WHERE product_id = $delete_id LIMIT 1";
-    $sales_result = mysqli_query($conn, $check_sales);
-    
-    $check_purchases = "SELECT id FROM purchase_details WHERE product_id = $delete_id LIMIT 1";
-    $purchases_result = mysqli_query($conn, $check_purchases);
-    
-    if(mysqli_num_rows($sales_result) > 0 || mysqli_num_rows($purchases_result) > 0) {
-        echo "<script>Swal.fire({title: 'Cannot Delete!', text: 'This product has sales or purchase records!', icon: 'warning', confirmButtonColor: '#1e7e34'});</script>";
-    } else {
-        // Delete opening stock records first
-        mysqli_query($conn, "DELETE FROM opening_stock WHERE product_id = $delete_id");
-        // Delete inventory ledger records
-        mysqli_query($conn, "DELETE FROM inventory_ledger WHERE product_id = $delete_id");
-        // Delete product sizes
-        mysqli_query($conn, "DELETE FROM product_sizes WHERE product_id = $delete_id");
-        // Delete product
-        $delete_query = "DELETE FROM products WHERE id = $delete_id";
-        if(mysqli_query($conn, $delete_query)) {
-            echo "<script>Swal.fire({title: 'Deleted!', text: 'Product deleted successfully!', icon: 'success', confirmButtonColor: '#1e7e34'}).then(() => { window.location.href = 'addproduct.php'; });</script>";
-        } else {
-            echo "<script>Swal.fire({title: 'Error!', text: 'Failed to delete product!', icon: 'error', confirmButtonColor: '#1e7e34'});</script>";
-        }
-    }
+    exit();
 }
 
 // Get current stock for a product
@@ -653,7 +625,29 @@ function toggleStatus(id, currentStatus) {
         confirmButtonText: 'Yes, ' + action + ' it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = 'addproduct.php?toggle_status=' + id + '&current_status=' + currentStatus;
+            $.ajax({
+                url: 'addproduct.php',
+                type: 'POST',
+                data: { action: 'toggle_status', id: id, current_status: currentStatus },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: res.message,
+                            icon: 'success',
+                            confirmButtonColor: '#1e7e34'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire('Error', 'Failed to update status: ' + error, 'error');
+                }
+            });
         }
     });
 }
@@ -662,7 +656,7 @@ function toggleStatus(id, currentStatus) {
 function confirmDelete(id) {
     Swal.fire({
         title: 'Are you sure?',
-        text: "You won't be able to revert this! This product will be deleted permanently.",
+        text: "This product and its opening stock will be deleted permanently!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
@@ -671,7 +665,39 @@ function confirmDelete(id) {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = 'addproduct.php?delete_id=' + id;
+            $.ajax({
+                url: 'delete_product.php',
+                type: 'POST',
+                data: { id: id },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message,
+                            icon: 'success',
+                            confirmButtonColor: '#1e7e34'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: response.message,
+                            icon: 'error',
+                            confirmButtonColor: '#1e7e34'
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'An error occurred while deleting the product.',
+                        icon: 'error',
+                        confirmButtonColor: '#1e7e34'
+                    });
+                }
+            });
         }
     });
 }
