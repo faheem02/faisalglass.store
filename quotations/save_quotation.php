@@ -43,6 +43,12 @@ include('../includes/txt.php');
 if(isset($_POST['save_quotation'])) {
     $quotation_date = mysqli_real_escape_string($conn, $_POST['quotation_date'] ?? date('Y-m-d'));
     $customer_id = intval($_POST['customer_id'] ?? 0);
+    if($customer_id <= 0) {
+        $walkin_q = mysqli_query($conn, "SELECT id FROM customers WHERE customer_code = 'WALK-IN' OR customer_name LIKE 'Walk-In%' LIMIT 1");
+        if($walkin_q && mysqli_num_rows($walkin_q) > 0) {
+            $customer_id = intval(mysqli_fetch_assoc($walkin_q)['id']);
+        }
+    }
     $valid_until = !empty($_POST['valid_until']) ? "'" . mysqli_real_escape_string($conn, $_POST['valid_until']) . "'" : "NULL";
     $reference_no = mysqli_real_escape_string($conn, trim($_POST['reference_no'] ?? ''));
     $remarks = mysqli_real_escape_string($conn, trim($_POST['remarks'] ?? ''));

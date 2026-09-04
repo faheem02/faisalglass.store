@@ -47,6 +47,12 @@ $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-d');
 $filter_customer = isset($_GET['customer_id']) ? intval($_GET['customer_id']) : 0;
 
 $customers_result = mysqli_query($conn, "SELECT id, customer_name FROM customers WHERE status = 1");
+$bank_accounts_result = mysqli_query($conn, "SELECT id, bank_name, account_title, account_number FROM bank_accounts WHERE status = 1 ORDER BY bank_name");
+$bank_accounts = [];
+if($bank_accounts_result) {
+    while($b = mysqli_fetch_assoc($bank_accounts_result)) { $bank_accounts[] = $b; }
+}
+
 $sales_query = "SELECT s.*, c.customer_name, c.customer_code FROM sale_master s LEFT JOIN customers c ON s.customer_id = c.id WHERE s.sale_date BETWEEN '$from_date' AND '$to_date'";
 if($filter_customer > 0) $sales_query .= " AND s.customer_id = $filter_customer";
 $sales_query .= " ORDER BY s.id DESC";
@@ -142,7 +148,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 <div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-warning text-uppercase mb-1">Outstanding</div><div class="summary-number text-warning"><?php echo formatCurrency($summary['total_remaining'] ?? 0); ?></div><small><?php echo $summary['total_count'] ?? 0; ?> Invoices</small></div></div>
 </div>
 <div class="card form-card"><div class="card-header-custom"><i class="fas fa-filter mr-2"></i> Filter Sales</div><div class="card-body"><form method="GET" class="form-inline"><div class="row w-100"><div class="col-md-3"><input type="date" name="from_date" class="form-control w-100" value="<?php echo $from_date; ?>"></div><div class="col-md-3"><input type="date" name="to_date" class="form-control w-100" value="<?php echo $to_date; ?>"></div><div class="col-md-4"><select name="customer_id" class="form-control w-100"><option value="0">All Customers</option><?php while($c = mysqli_fetch_assoc($customers_result)): ?><option value="<?php echo $c['id']; ?>" <?php echo ($filter_customer == $c['id']) ? 'selected' : ''; ?>><?php echo $c['customer_name']; ?></option><?php endwhile; ?></select></div><div class="col-md-2"><button type="submit" class="btn btn-green w-100"><i class="fas fa-search"></i> Filter</button></div></div></form></div></div>
-<div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Payment Type</th><th>Reference No</th><th>Remarks</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+<div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Reference No</th><th>Remarks</th><th>Status</th><th>Actions</th></tr></thead><tbody>
 <?php while($sale = mysqli_fetch_assoc($sales_result)): ?>
 <tr>
     <td class="font-weight-bold text-primary"><?php echo $sale['invoice_no']; ?></td>
@@ -151,24 +157,43 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
     <td class="text-right"><?php echo formatCurrency($sale['grand_total']); ?></td>
     <td class="text-right text-success"><?php echo formatCurrency($sale['received_amount']); ?></td>
     <td class="text-right text-danger"><?php echo formatCurrency($sale['remaining_amount']); ?></td>
-    <td><?php echo ucfirst($sale['payment_type']); ?></td>
     <td><?php echo $sale['reference_no'] ? htmlspecialchars($sale['reference_no']) : '-'; ?></td>
     <td><?php echo $sale['remarks'] ? htmlspecialchars($sale['remarks']) : '-'; ?></td>
     <td class="text-center"><?php
-        $pay_status = 'Pending';
-        if(floatval($sale['remaining_amount']) <= 0) { $pay_status = 'Paid'; }
-        elseif(floatval($sale['received_amount']) > 0) { $pay_status = 'Partial'; }
-        if($sale['refund_status'] == 'full') { $pay_status = 'Refund'; }
-        elseif($sale['refund_status'] == 'partial') { $pay_status = 'Refund (Part)'; }
-        elseif($sale['status'] == 0) { $pay_status = 'Cancelled'; }
-        if($pay_status == 'Paid') echo '<span class="badge-paid">'.$pay_status.'</span>';
-        elseif($pay_status == 'Partial') echo '<span class="badge-partial">'.$pay_status.'</span>';
-        elseif($pay_status == 'Refund' || $pay_status == 'Refund (Part)') echo '<span class="badge-refund">'.$pay_status.'</span>';
-        elseif($pay_status == 'Cancelled') echo '<span class="badge badge-danger" style="padding:5px 12px;border-radius:20px;">'.$pay_status.'</span>';
-        else echo '<span class="badge-pending">'.$pay_status.'</span>';
+        $pt = strtolower($sale['payment_type'] ?? 'cash');
+        if(($sale['refund_status'] ?? '') == 'full') {
+            echo '<span class="badge badge-secondary" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-undo mr-1"></i> Refund</span>';
+        } elseif(($sale['refund_status'] ?? '') == 'partial') {
+            echo '<span class="badge badge-secondary" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-undo mr-1"></i> Refund (Part)</span>';
+        } elseif(($sale['status'] ?? 1) == 0) {
+            echo '<span class="badge badge-dark" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-ban mr-1"></i> Cancelled</span>';
+        } elseif($pt == 'cash') {
+            echo '<span class="badge badge-success" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-money-bill-wave mr-1"></i> Cash</span>';
+        } elseif($pt == 'bank') {
+            echo '<span class="badge badge-info" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-university mr-1"></i> Bank</span>';
+        } elseif($pt == 'credit') {
+            echo '<span class="badge badge-danger" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-clock mr-1"></i> Credit</span>';
+        } elseif($pt == 'partial') {
+            echo '<span class="badge badge-warning text-dark" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-adjust mr-1"></i> Partial</span>';
+        } else {
+            echo '<span class="badge badge-primary" style="padding:5px 12px;border-radius:20px;font-size:12px;">' . ucfirst($pt) . '</span>';
+        }
     ?></td>
     <td>
         <div class="action-btns">
+            <?php 
+            $is_walkin = (($sale['customer_code'] ?? '') == 'WALK-IN' || stripos($sale['customer_name'] ?? '', 'Walk-in') !== false || stripos($sale['customer_name'] ?? '', 'Walk in') !== false);
+            if(floatval($sale['remaining_amount']) > 0 && $is_walkin): ?>
+                <button class="btn btn-sm btn-success receive-payment-btn" title="Receive Walk-in Payment (Due: <?php echo formatCurrency($sale['remaining_amount']); ?>)" 
+                        data-id="<?php echo $sale['id']; ?>"
+                        data-invoice="<?php echo htmlspecialchars($sale['invoice_no']); ?>"
+                        data-customer="<?php echo htmlspecialchars($sale['customer_name'] . ($sale['customer_code'] ? ' (' . $sale['customer_code'] . ')' : '')); ?>"
+                        data-total="<?php echo $sale['grand_total']; ?>"
+                        data-received="<?php echo $sale['received_amount']; ?>"
+                        data-remaining="<?php echo $sale['remaining_amount']; ?>">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </button>
+            <?php endif; ?>
             <button class="btn btn-sm btn-info" title="View Sale" onclick="openViewModal(<?php echo $sale['id']; ?>)"><i class="fas fa-eye"></i></button>
             <a href="add_sale.php?edit_id=<?php echo $sale['id']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
             <button class="btn btn-sm btn-primary" title="Print" onclick="window.open('print_invoice.php?invoice_no=<?php echo urlencode($sale['invoice_no']); ?>', '_blank')"><i class="fas fa-print"></i></button>
@@ -178,6 +203,101 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 </tr>
 <?php endwhile; ?>
 </tbody></table></div></div></div></div><footer class="sticky-footer bg-white"><div class="container my-auto"><div class="copyright text-center my-auto"><span>&copy; <?php echo date('Y'); ?> <?php echo $software_name; ?> - All Rights Reserved</span></div></div></footer></div>
+
+<!-- Receive Payment Modal -->
+<div class="modal fade" id="receivePaymentModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e7e34, #28a745); color: white;">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-hand-holding-usd mr-2"></i> Receive Payment</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="receivePaymentForm">
+                <input type="hidden" name="sale_id" id="rec_sale_id">
+                <div class="modal-body p-4">
+                    <!-- Invoice Summary Card -->
+                    <div class="card bg-light border-0 mb-3" style="border-left: 4px solid #1e7e34 !important;">
+                        <div class="card-body py-2 px-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Invoice No</small>
+                                    <strong id="rec_invoice_no" class="text-primary font-weight-bold">-</strong>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <small class="text-muted d-block">Customer</small>
+                                    <strong id="rec_customer_name" class="text-dark">-</strong>
+                                </div>
+                            </div>
+                            <hr class="my-2">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Total</small>
+                                    <span id="rec_grand_total" class="font-weight-bold">₨ 0.00</span>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Received</small>
+                                    <span id="rec_received_amount" class="text-success font-weight-bold">₨ 0.00</span>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Remaining</small>
+                                    <span id="rec_remaining_amount" class="text-danger font-weight-bold" style="font-size: 15px;">₨ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold"><i class="fas fa-calendar-alt text-success mr-1"></i> Payment Date</label>
+                        <input type="date" name="payment_date" id="rec_payment_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold"><i class="fas fa-money-bill-wave text-success mr-1"></i> Payment Method</label>
+                        <select name="payment_method" id="rec_payment_method" class="form-control">
+                            <option value="cash">Cash in Hand</option>
+                            <option value="bank">Bank Transfer</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="rec_bank_group" style="display: none;">
+                        <label class="font-weight-bold"><i class="fas fa-university text-info mr-1"></i> Select Bank Account</label>
+                        <select name="bank_account_id" id="rec_bank_account_id" class="form-control">
+                            <option value="">-- Select Bank Account --</option>
+                            <?php foreach($bank_accounts as $ba): ?>
+                                <option value="<?php echo $ba['id']; ?>">
+                                    <?php echo htmlspecialchars($ba['bank_name'] . ' (' . ($ba['account_number'] ?? $ba['account_title']) . ')'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold"><i class="fas fa-coins text-success mr-1"></i> Amount to Receive (₨) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0.01" name="amount" id="rec_amount" class="form-control form-control-lg font-weight-bold text-success" placeholder="Enter amount" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-receipt text-muted mr-1"></i> Reference / Trx No (Optional)</label>
+                        <input type="text" name="reference_no" id="rec_reference_no" class="form-control" placeholder="Cheque / Trx ID / Slip No">
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label><i class="fas fa-comment text-muted mr-1"></i> Remarks</label>
+                        <input type="text" name="remarks" id="rec_remarks" class="form-control" placeholder="Payment received note">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success font-weight-bold" id="rec_submit_btn">
+                        <i class="fas fa-check-circle mr-1"></i> Confirm Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- View Sale Modal -->
 <div class="modal fade" id="viewSaleModal" tabindex="-1" role="dialog">
@@ -214,6 +334,85 @@ $(document).ready(function(){
     <?php if(isset($_GET['id']) && intval($_GET['id']) > 0): ?>
     openViewModal(<?php echo intval($_GET['id']); ?>);
     <?php endif; ?>
+
+    // Receive Payment button click
+    $(document).on('click', '.receive-payment-btn', function(){
+        const saleId = $(this).data('id');
+        const invoiceNo = $(this).data('invoice');
+        const customerName = $(this).data('customer');
+        const total = parseFloat($(this).data('total')) || 0;
+        const received = parseFloat($(this).data('received')) || 0;
+        const remaining = parseFloat($(this).data('remaining')) || 0;
+
+        $('#rec_sale_id').val(saleId);
+        $('#rec_invoice_no').text(invoiceNo);
+        $('#rec_customer_name').text(customerName);
+        $('#rec_grand_total').text('₨ ' + total.toFixed(2));
+        $('#rec_received_amount').text('₨ ' + received.toFixed(2));
+        $('#rec_remaining_amount').text('₨ ' + remaining.toFixed(2));
+        
+        $('#rec_amount').val(remaining.toFixed(2)).attr('max', remaining.toFixed(2));
+        $('#rec_payment_date').val(new Date().toISOString().split('T')[0]);
+        $('#rec_payment_method').val('cash').trigger('change');
+        $('#rec_reference_no').val('');
+        $('#rec_remarks').val('');
+
+        $('#receivePaymentModal').modal('show');
+    });
+
+    // Payment method toggle bank dropdown
+    $('#rec_payment_method').on('change', function(){
+        if($(this).val() === 'bank'){
+            $('#rec_bank_group').slideDown(200);
+            $('#rec_bank_account_id').prop('required', true);
+        } else {
+            $('#rec_bank_group').slideUp(200);
+            $('#rec_bank_account_id').prop('required', false);
+        }
+    });
+
+    // Submit Payment receipt form
+    $('#receivePaymentForm').on('submit', function(e){
+        e.preventDefault();
+        const btn = $('#rec_submit_btn');
+        const originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+
+        $.ajax({
+            url: 'save_invoice_payment.php',
+            type: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(res){
+                btn.prop('disabled', false).html(originalHtml);
+                if(res.success){
+                    $('#receivePaymentModal').modal('hide');
+                    Swal.fire({
+                        title: 'Success!',
+                        text: res.message,
+                        icon: 'success',
+                        confirmButtonColor: '#1e7e34'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: res.message,
+                        icon: 'error'
+                    });
+                }
+            },
+            error: function(){
+                btn.prop('disabled', false).html(originalHtml);
+                Swal.fire({
+                    title: 'Network Error!',
+                    text: 'Unable to process payment receipt. Please check your connection.',
+                    icon: 'error'
+                });
+            }
+        });
+    });
 });
 
 function confirmDelete(id){

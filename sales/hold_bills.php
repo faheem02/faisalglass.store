@@ -81,11 +81,15 @@ $(document).ready(function() {
             { data: 'status', render: data => `<span class="badge badge-${data=='hold'?'warning':(data=='converted'?'success':'secondary')}">${data}</span>` },
             { data: 'created_by_name' },
             { data: null, render: function(data) {
-                let btns = '';
+                let btns = '<div class="btn-group btn-group-sm">';
                 if(data.status == 'hold') {
-                    btns += `<a href="add_sale.php?load_hold_id=${data.id}" class="btn btn-sm btn-primary"><i class="fas fa-download"></i> Load</a>`;
-                    btns += `<button class="btn btn-sm btn-danger ml-1 delete-hold" data-id="${data.id}"><i class="fas fa-trash"></i> Delete</button>`;
+                    btns += `<a href="add_sale.php?load_hold_id=${data.id}" class="btn btn-primary" title="Load into Form"><i class="fas fa-download"></i> Load</a>`;
                 }
+                btns += `<a href="print_hold_bill.php?id=${data.id}" target="_blank" class="btn btn-info" title="Print / Download PDF"><i class="fas fa-file-pdf"></i> PDF</a>`;
+                if(data.status == 'hold') {
+                    btns += `<button class="btn btn-danger delete-hold" data-id="${data.id}" title="Delete"><i class="fas fa-trash"></i></button>`;
+                }
+                btns += '</div>';
                 return btns;
             }}
         ]

@@ -58,8 +58,8 @@ function generateQuotationNo($conn) {
     return $prefix . "-" . str_pad($next_num, 5, '0', STR_PAD_LEFT);
 }
 
-// Fetch customers for dropdown
-$customers_query = "SELECT id, customer_name, customer_code, mobile, address, current_balance FROM customers WHERE status = 1 ORDER BY customer_name";
+// Fetch customers for dropdown (including walk-in at top)
+$customers_query = "SELECT id, customer_name, customer_code, mobile, address, current_balance FROM customers WHERE status = 1 ORDER BY CASE WHEN customer_code = 'WALK-IN' OR customer_name LIKE 'Walk-In%' OR customer_name LIKE 'TMP%' THEN 0 ELSE 1 END, customer_name";
 $customers_result = mysqli_query($conn, $customers_query);
 
 // Fetch products for dropdown
@@ -106,6 +106,29 @@ $bank_result = mysqli_query($conn, $bank_query);
         .remove-product { cursor: pointer; color: #dc3545; }
         .remove-product:hover { color: #a71d2a; }
         .select2-container .select2-selection--single { height: 38px; }
+        .input-group > .select2-container--bootstrap4,
+        .input-group > .select2-container {
+            flex: 1 1 auto !important;
+            width: 1% !important;
+            min-width: 0 !important;
+        }
+        .input-group > .select2-container--bootstrap4 .select2-selection--single,
+        .input-group > .select2-container .select2-selection--single {
+            height: 38px !important;
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered,
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 12px !important;
+            padding-right: 24px !important;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow,
+        .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+            right: 8px !important;
+        }
         .table td { padding: 8px; vertical-align: middle; }
         .table input, .table select { width: 100%; min-width: 80px; }
         .std-height, .std-width { background-color: #fff3cd; }
@@ -176,28 +199,33 @@ $bank_result = mysqli_query($conn, $bank_query);
                             
                             <div class="row">
                                 <div class="col-md-8">
-                                    <div class="form-group">
-                                        <label class="required-field"><i class="fas fa-user text-success mr-1"></i> Customer</label>
-                                        <div class="input-group">
-                                            <select name="customer_id" id="customer_id" class="form-control" required>
-                                                <option value="">Select Customer</option>
-                                                <?php 
-                                                while($cust = mysqli_fetch_assoc($customers_result)): ?>
-                                                    <option value="<?php echo $cust['id']; ?>" 
-                                                            data-mobile="<?php echo $cust['mobile']; ?>"
-                                                            data-address="<?php echo htmlspecialchars($cust['address'] ?? ''); ?>"
-                                                            data-balance="<?php echo $cust['current_balance']; ?>"
-                                                            <?php echo ($is_edit && $edit_data['customer_id'] == $cust['id']) ? 'selected' : ''; ?>>
-                                                        <?php echo htmlspecialchars($cust['customer_name'] . ' (' . $cust['customer_code'] . ')'); ?>
-                                                    </option>
-                                                <?php endwhile; ?>
-                                            </select>
-                                            <div class="input-group-append">
-                                                <button type="button" class="btn btn-warning" id="newCustomerBtn" title="New Walk-in Customer">
-                                                    <i class="fas fa-plus"></i> New Customer
+                                    <div class="form-group mb-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="required-field mb-0 font-weight-bold"><i class="fas fa-user text-success mr-1"></i> Customer</label>
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-success font-weight-bold py-0 px-2 mr-1" id="quickWalkInBtn" title="Select Walk-in Customer" style="height: 26px; font-size: 12px;">
+                                                    <i class="fas fa-walking mr-1"></i> Walk-In
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-warning font-weight-bold py-0 px-2" id="newCustomerBtn" title="New Customer Account" style="height: 26px; font-size: 12px;">
+                                                    <i class="fas fa-plus mr-1"></i> New
                                                 </button>
                                             </div>
                                         </div>
+                                        <select name="customer_id" id="customer_id" class="form-control" style="width: 100%;" required>
+                                            <option value="">-- Select or Type to Search Customer --</option>
+                                            <?php 
+                                            while($cust = mysqli_fetch_assoc($customers_result)): ?>
+                                                <option value="<?php echo $cust['id']; ?>" 
+                                                        data-mobile="<?php echo $cust['mobile']; ?>"
+                                                        data-address="<?php echo htmlspecialchars($cust['address'] ?? ''); ?>"
+                                                        data-balance="<?php echo $cust['current_balance']; ?>"
+                                                        <?php echo ($cust['customer_code'] == 'WALK-IN' || strpos($cust['customer_name'], 'Walk-in') !== false) ? 'data-walkin="1"' : ''; ?>
+                                                        <?php echo ($is_edit && $edit_data['customer_id'] == $cust['id']) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($cust['customer_name'] . ' (' . $cust['customer_code'] . ')'); ?>
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </select>
+                                        <small class="text-muted d-block mt-1"><i class="fas fa-info-circle text-info mr-1"></i> Click <b>Walk-In</b> above for quick walk-in quotation or search customer</small>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -499,16 +527,16 @@ function calculateTotals() {
 
 function addProductRow(data) {
     var pid = data ? data.product_id : '';
-    var cH = data ? parseFloat(data.client_height) || 0 : 0;
-    var cW = data ? parseFloat(data.client_width) || 0 : 0;
-    var sH = data ? parseFloat(data.std_height) || 0 : 0;
-    var sW = data ? parseFloat(data.std_width) || 0 : 0;
+    var cH = data && data.client_height > 0 ? data.client_height : '';
+    var cW = data && data.client_width > 0 ? data.client_width : '';
+    var sH = data && data.std_height > 0 ? data.std_height : '';
+    var sW = data && data.std_width > 0 ? data.std_width : '';
     var qty = data ? parseFloat(data.quantity) || 1 : 1;
-    var uPrice = data ? parseFloat(data.unit_price) || 0 : 0;
+    var uPrice = data && data.unit_price > 0 ? data.unit_price : '';
     var ar = data ? parseFloat(data.area) || 0 : 0;
     var totAr = data ? (ar * qty) : 0;
     var amt = data ? parseFloat(data.amount) || 0 : 0;
-    var dPct = data ? parseFloat(data.discount_percentage) || 0 : 0;
+    var dPct = data && data.discount_percentage > 0 ? data.discount_percentage : '';
     var netAmt = data ? parseFloat(data.net_amount) || 0 : 0;
     
     var optionsHtml = '<option value="">Search product...</option>';
@@ -526,11 +554,11 @@ function addProductRow(data) {
         '<td><input type="number" step="0.01" name="std_height[]" class="form-control std-height" data-row="' + row + '" placeholder="Std H" style="background:#fff3cd;" value="' + sH + '"></td>' +
         '<td><input type="number" step="0.01" name="std_width[]" class="form-control std-width" data-row="' + row + '" placeholder="Std W" style="background:#fff3cd;" value="' + sW + '"></td>' +
         '<td><input type="number" step="0.01" name="quantity[]" class="form-control quantity" data-row="' + row + '" value="' + qty + '" min="0"></td>' +
-        '<td><input type="number" step="0.01" name="unit_price[]" class="form-control unit-price" data-row="' + row + '" value="' + uPrice + '" min="0"></td>' +
+        '<td><input type="number" step="0.01" name="unit_price[]" class="form-control unit-price" data-row="' + row + '" placeholder="Price" value="' + uPrice + '" min="0"></td>' +
         '<td><input type="number" step="0.01" name="area[]" class="form-control area" data-row="' + row + '" value="' + ar.toFixed(2) + '" readonly style="background:#e9ecef;"></td>' +
         '<td><input type="number" step="0.01" name="total_area[]" class="form-control total-area" data-row="' + row + '" value="' + totAr.toFixed(2) + '" readonly style="background:#e9ecef;"></td>' +
         '<td><input type="number" step="0.01" name="amount[]" class="form-control row-amount" data-row="' + row + '" value="' + amt.toFixed(2) + '" readonly style="background:#e9ecef;"></td>' +
-        '<td><input type="number" step="0.01" name="discount_percent[]" class="form-control discount-percent" data-row="' + row + '" value="' + dPct + '" min="0" max="100"></td>' +
+        '<td><input type="number" step="0.01" name="discount_percent[]" class="form-control discount-percent" data-row="' + row + '" placeholder="0" value="' + dPct + '" min="0" max="100"></td>' +
         '<td><input type="number" step="0.01" name="net_amount[]" class="form-control net-amount" data-row="' + row + '" value="' + netAmt.toFixed(2) + '" readonly style="background:#e9ecef;"></td>' +
         '<td class="text-center"><i class="fas fa-trash text-danger remove-product" data-row="' + row + '" style="cursor:pointer; font-size:18px;"></i></td>' +
         '</tr>';
@@ -550,25 +578,32 @@ function bindRowEvents(row) {
         calculateTotals();
     });
     
-    $(`.client-height[data-row="${row}"], .client-width[data-row="${row}"]`).on('keyup change', function() {
+    $(`.client-height[data-row="${row}"]`).on('input keyup change', function() {
         var r = $(this).data('row');
-        var h = parseFloat($(`.client-height[data-row="${r}"]`).val()) || 0;
-        var w = parseFloat($(`.client-width[data-row="${r}"]`).val()) || 0;
-        if($(`.std-height[data-row="${r}"]`).val() == 0) $(`.std-height[data-row="${r}"]`).val(h);
-        if($(`.std-width[data-row="${r}"]`).val() == 0) $(`.std-width[data-row="${r}"]`).val(w);
+        var val = $(this).val();
+        $(`.std-height[data-row="${r}"]`).val(val);
         updateArea(r);
         calculateRowAmount(r);
         calculateTotals();
     });
     
-    $(`.std-height[data-row="${row}"], .std-width[data-row="${row}"]`).on('keyup change', function() {
+    $(`.client-width[data-row="${row}"]`).on('input keyup change', function() {
+        var r = $(this).data('row');
+        var val = $(this).val();
+        $(`.std-width[data-row="${r}"]`).val(val);
+        updateArea(r);
+        calculateRowAmount(r);
+        calculateTotals();
+    });
+    
+    $(`.std-height[data-row="${row}"], .std-width[data-row="${row}"]`).on('input keyup change', function() {
         var r = $(this).data('row');
         updateArea(r);
         calculateRowAmount(r);
         calculateTotals();
     });
     
-    $(`.quantity[data-row="${row}"], .unit-price[data-row="${row}"], .discount-percent[data-row="${row}"]`).on('keyup change', function() {
+    $(`.quantity[data-row="${row}"], .unit-price[data-row="${row}"], .discount-percent[data-row="${row}"]`).on('input keyup change', function() {
         var r = $(this).data('row');
         calculateRowAmount(r);
         calculateTotals();
@@ -581,6 +616,13 @@ function bindRowEvents(row) {
 }
 
 $(document).ready(function() {
+    // Initialize customer select2
+    $('#customer_id').select2({
+        theme: 'bootstrap4',
+        placeholder: '-- Select or Type to Search Customer --',
+        width: '100%'
+    });
+
     // Load edit items or add one empty row
     if(isEdit && editItems.length > 0) {
         for(var i = 0; i < editItems.length; i++) {
@@ -606,6 +648,21 @@ $(document).ready(function() {
         calculateTotals();
     });
     
+    // Quick Walk-In Customer Button
+    $('#quickWalkInBtn').on('click', function() {
+        let walkinId = $('#customer_id option[data-walkin="1"]').val();
+        if(walkinId) {
+            $('#customer_id').val(walkinId).trigger('change');
+        } else {
+            $('#customer_id option').each(function() {
+                if($(this).text().toLowerCase().includes('walk-in')) {
+                    $('#customer_id').val($(this).val()).trigger('change');
+                    return false;
+                }
+            });
+        }
+    });
+
     // New Customer Button
     $('#newCustomerBtn').on('click', function() {
         $('#newCustomerModal').modal('show');

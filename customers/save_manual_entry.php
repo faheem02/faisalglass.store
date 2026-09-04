@@ -7,15 +7,17 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+while (ob_get_level()) { ob_end_clean(); }
+ob_start();
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
+if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access. Please login.']);
     exit();
 }
 
-include_once('../includes/database.php');
-include_once('../includes/txt.php');
+include_once(__DIR__ . '/../includes/database.php');
+include_once(__DIR__ . '/../includes/txt.php');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);

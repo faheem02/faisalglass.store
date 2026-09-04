@@ -246,10 +246,10 @@ function generateInvoiceNo($conn) {
     }
 }
 
-// Fetch customers for dropdown (including walk-in)
+// Fetch customers for dropdown (including walk-in at top)
 $customers_query = "SELECT id, customer_name, customer_code, mobile, current_balance 
                     FROM customers WHERE status = 1 
-                    ORDER BY CASE WHEN customer_name LIKE 'Walk-In%' OR customer_name LIKE 'TMP%' THEN 0 ELSE 1 END, customer_name";
+                    ORDER BY CASE WHEN customer_code = 'WALK-IN' OR customer_name LIKE 'Walk-In%' OR customer_name LIKE 'TMP%' THEN 0 ELSE 1 END, customer_name";
 $customers_result = mysqli_query($conn, $customers_query);
 
 // Fetch bank accounts
@@ -294,6 +294,41 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
         .remove-row { cursor: pointer; color: #dc3545; }
         .remove-row:hover { color: #a71d2a; }
         .select2-container .select2-selection--single { height: 38px; }
+        .input-group > .select2-container--bootstrap4,
+        .input-group > .select2-container {
+            flex: 1 1 auto !important;
+            width: 1% !important;
+            min-width: 0 !important;
+        }
+        .input-group > .select2-container--bootstrap4 .select2-selection--single,
+        .input-group > .select2-container .select2-selection--single {
+            height: 38px !important;
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered,
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 12px !important;
+            padding-right: 24px !important;
+            color: #495057 !important;
+            background-color: #fff !important;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow,
+        .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+            right: 8px !important;
+        }
+        .customer-help-text {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #6c757d;
+            clear: both;
+            position: relative;
+            z-index: 1;
+        }
+        .form-group.mb-0 { position: relative; }
         .table td { padding: 8px; vertical-align: middle; }
         .table input, .table select { width: 100%; min-width: 80px; }
         .std-height, .std-width { background-color: #f0f8ff; }
@@ -347,26 +382,30 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
-                                <label><i class="fas fa-user text-success mr-1"></i> Customer</label>
-                                <div class="input-group">
-                                    <select name="customer_id" id="customer_id" class="form-control">
-                                        <option value="">-- Select or Type to Search --</option>
-                                        <?php while($cust = mysqli_fetch_assoc($customers_result)): ?>
-                                            <option value="<?php echo $cust['id']; ?>" 
-                                                    data-mobile="<?php echo $cust['mobile']; ?>"
-                                                    data-balance="<?php echo $cust['current_balance']; ?>">
-                                                <?php echo htmlspecialchars($cust['customer_name'] . ' (' . $cust['customer_code'] . ')'); ?>
-                                            </option>
-                                        <?php endwhile; ?>
-                                    </select>
-                                    <div class="input-group-append">
-                                        <button type="button" class="btn btn-warning" id="newCustomerBtn" title="New Walk-in Customer">
-                                            <i class="fas fa-plus"></i> New
+                            <div class="form-group mb-0">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="mb-0 font-weight-bold"><i class="fas fa-user text-success mr-1"></i> Customer</label>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-success font-weight-bold py-0 px-2 mr-1" id="quickWalkInBtn" title="Select Walk-in Customer" style="height: 26px; font-size: 12px;">
+                                            <i class="fas fa-walking mr-1"></i> Walk-In
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-warning font-weight-bold py-0 px-2" id="newCustomerBtn" title="New Customer Account" style="height: 26px; font-size: 12px;">
+                                            <i class="fas fa-plus mr-1"></i> New
                                         </button>
                                     </div>
                                 </div>
-                                <small class="text-muted">Select existing customer or click "New" for walk-in customer</small>
+                                <select name="customer_id" id="customer_id" class="form-control" style="width: 100%;">
+                                    <option value="">-- Select or Type to Search Customer --</option>
+                                    <?php while($cust = mysqli_fetch_assoc($customers_result)): ?>
+                                        <option value="<?php echo $cust['id']; ?>" 
+                                                data-mobile="<?php echo $cust['mobile']; ?>"
+                                                data-balance="<?php echo $cust['current_balance']; ?>"
+                                                <?php echo ($cust['customer_code'] == 'WALK-IN' || strpos($cust['customer_name'], 'Walk-in') !== false) ? 'data-walkin="1"' : ''; ?>>
+                                            <?php echo htmlspecialchars($cust['customer_name'] . ' (' . $cust['customer_code'] . ')'); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                                <small class="text-muted d-block mt-1"><i class="fas fa-info-circle text-info mr-1"></i> Click <b>Walk-In</b> above for instant cash sale or search customer</small>
                             </div>
                         </div>
                     </div>
@@ -435,10 +474,10 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
                                     <div class="row"><div class="col-4">DISCOUNT:</div><div class="col-8 text-right"><strong id="discountAmount">₨ 0.00</strong></div></div>
                                 </div>
                                 <div class="calculation-row">
-                                    <div class="row"><div class="col-4">DELIVERY / OTHER CHARGES:</div><div class="col-8"><input type="number" step="0.01" name="other_charges" id="other_charges" class="form-control form-control-sm" value="<?php echo $edit_data ? $edit_data['other_charges'] : 0; ?>" min="0" style="width:150px; display:inline-block; text-align:right;"></div></div>
+                                    <div class="row"><div class="col-4">DELIVERY / OTHER CHARGES:</div><div class="col-8"><input type="number" step="0.01" name="other_charges" id="other_charges" class="form-control form-control-sm" value="<?php echo ($edit_data && $edit_data['other_charges'] > 0) ? $edit_data['other_charges'] : ''; ?>" placeholder="0.00" min="0" style="width:150px; display:inline-block; text-align:right;"></div></div>
                                 </div>
                                 <div class="calculation-row" id="advance_row">
-                                    <div class="row"><div class="col-4">ADVANCE / RECEIVED:</div><div class="col-8"><input type="number" step="0.01" name="received_amount" id="received_amount" class="form-control form-control-sm" value="<?php echo $edit_data ? $edit_data['received_amount'] : 0; ?>" min="0" style="width:150px; display:inline-block; text-align:right;"></div></div>
+                                    <div class="row"><div class="col-4">ADVANCE / RECEIVED:</div><div class="col-8"><input type="number" step="0.01" name="received_amount" id="received_amount" class="form-control form-control-sm" value="<?php echo ($edit_data && $edit_data['received_amount'] > 0) ? $edit_data['received_amount'] : ''; ?>" placeholder="0.00" min="0" style="width:150px; display:inline-block; text-align:right;"></div></div>
                                 </div>
                                 <div class="calculation-row" style="background: #e8f5e9;">
                                     <div class="row"><div class="col-4"><strong>BALANCE:</strong></div><div class="col-8 text-right"><strong id="grandTotal" style="font-size:20px; color:#dc3545;">₨ 0.00</strong></div></div>
@@ -653,11 +692,11 @@ function addProductGroup(savedRate = null) {
                             <tr class="size-row" data-row-id="0" data-group-id="${groupId}">
                                 <td>
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control client-height" data-group-id="${groupId}" data-row-id="0" placeholder="H" value="0" style="min-width:60px;">
+                                        <input type="number" step="0.01" class="form-control client-height" data-group-id="${groupId}" data-row-id="0" placeholder="H" value="" style="min-width:60px;">
                                         <div class="input-group-append input-group-prepend">
                                             <span class="input-group-text" style="padding:2px 6px;">x</span>
                                         </div>
-                                        <input type="number" step="0.01" class="form-control client-width" data-group-id="${groupId}" data-row-id="0" placeholder="W" value="0" style="min-width:60px;">
+                                        <input type="number" step="0.01" class="form-control client-width" data-group-id="${groupId}" data-row-id="0" placeholder="W" value="" style="min-width:60px;">
                                     </div>
                                 </td>
                                 <td><input type="number" step="0.01" class="form-control quantity" data-group-id="${groupId}" data-row-id="0" value="1" min="0.01"></td>
@@ -667,13 +706,13 @@ function addProductGroup(savedRate = null) {
                                         <option value="9">9</option><option value="12">12</option><option value="24">24</option>
                                     </select>
                                 </td>
-                                <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="0" readonly style="background:#f0f8ff;" value="0"></td>
-                                <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="0" readonly style="background:#f0f8ff;" value="0"></td>
+                                <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="0" readonly style="background:#f0f8ff;" placeholder="Std H" value=""></td>
+                                <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="0" readonly style="background:#f0f8ff;" placeholder="Std W" value=""></td>
                                 <td class="area-cell text-right" data-group-id="${groupId}" data-row-id="0"><strong>0.00</strong><br><small>sq ft</small></td>
                                 <td class="total-area-cell text-right" data-group-id="${groupId}" data-row-id="0"><strong>0.00</strong><br><small>sq ft</small></td>
-                                <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="0" value="0" min="0"></td>
+                                <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="0" value="${savedRate > 0 ? savedRate : ''}" placeholder="Price" min="0"></td>
                                 <td class="amount-cell text-right" data-group-id="${groupId}" data-row-id="0"><strong>₨ 0.00</strong></td>
-                                <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="0" value="0" min="0" max="100"></td>
+                                <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="0" value="" placeholder="0" min="0" max="100"></td>
                                 <td class="net-amount-cell text-right" data-group-id="${groupId}" data-row-id="0"><strong>₨ 0.00</strong></td>
                                 <td><button type="button" class="btn btn-sm btn-danger remove-size-row" data-group-id="${groupId}" data-row-id="0"><i class="fas fa-trash"></i></button></td>
                             </tr>
@@ -719,7 +758,7 @@ function bindGroupEvents(groupId) {
         lastSelectedProductId = productId;
         
         // Update all rate fields in this group
-        $(`.rate[data-group-id="${groupId}"]`).val(price);
+        $(`.rate[data-group-id="${groupId}"]`).val(price > 0 ? price : '');
         
         // Update all calculations
         $(`.size-row[data-group-id="${groupId}"]`).each(function() {
@@ -760,11 +799,11 @@ function addSizeRow(groupId) {
         <tr class="size-row" data-row-id="${newRowId}" data-group-id="${groupId}">
             <td>
                 <div class="input-group input-group-sm">
-                    <input type="number" step="0.01" class="form-control client-height" data-group-id="${groupId}" data-row-id="${newRowId}" placeholder="H" value="0" style="min-width:60px;">
+                    <input type="number" step="0.01" class="form-control client-height" data-group-id="${groupId}" data-row-id="${newRowId}" placeholder="H" value="" style="min-width:60px;">
                     <div class="input-group-append input-group-prepend">
                         <span class="input-group-text" style="padding:2px 6px;">x</span>
                     </div>
-                    <input type="number" step="0.01" class="form-control client-width" data-group-id="${groupId}" data-row-id="${newRowId}" placeholder="W" value="0" style="min-width:60px;">
+                    <input type="number" step="0.01" class="form-control client-width" data-group-id="${groupId}" data-row-id="${newRowId}" placeholder="W" value="" style="min-width:60px;">
                 </div>
             </td>
             <td><input type="number" step="0.01" class="form-control quantity" data-group-id="${groupId}" data-row-id="${newRowId}" value="1" min="0.01"></td>
@@ -774,13 +813,13 @@ function addSizeRow(groupId) {
                     <option value="9">9</option><option value="12">12</option><option value="24">24</option>
                 </select>
              </td>
-            <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="${newRowId}" readonly style="background:#f0f8ff;" value="0"></td>
-            <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="${newRowId}" readonly style="background:#f0f8ff;" value="0"></td>
+            <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="${newRowId}" readonly style="background:#f0f8ff;" placeholder="Std H" value=""></td>
+            <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="${newRowId}" readonly style="background:#f0f8ff;" placeholder="Std W" value=""></td>
             <td class="area-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>0.00</strong><br><small>sq ft</small></td>
             <td class="total-area-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>0.00</strong><br><small>sq ft</small></td>
-            <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="${newRowId}" value="${currentRate}" min="0"></td>
+            <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="${newRowId}" value="${currentRate > 0 ? currentRate : ''}" placeholder="Price" min="0"></td>
             <td class="amount-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ 0.00</strong></td>
-            <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="${newRowId}" value="0" min="0" max="100"></td>
+            <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="${newRowId}" value="" placeholder="0" min="0" max="100"></td>
             <td class="net-amount-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ 0.00</strong></td>
             <td><button type="button" class="btn btn-sm btn-danger remove-size-row" data-group-id="${groupId}" data-row-id="${newRowId}"><i class="fas fa-trash"></i></button></td>
         </tr>
@@ -816,18 +855,27 @@ function bindSizeRowEvents(groupId) {
 
 // Update std dimensions and area
 function updateStdAndArea(groupId, rowId) {
-    const clientH = parseFloat($(`.client-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val()) || 0;
-    const clientW = parseFloat($(`.client-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val()) || 0;
+    const rawH = $(`.client-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val();
+    const rawW = $(`.client-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val();
+    const clientH = parseFloat(rawH) || 0;
+    const clientW = parseFloat(rawW) || 0;
     const multiple = parseInt($(`.multiple-of[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val()) || 6;
     
-    const stdH = roundUpToMultiple(clientH, multiple);
-    const stdW = roundUpToMultiple(clientW, multiple);
-    const area = calculateArea(stdH, stdW);
-    
-    $(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(stdH);
-    $(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(stdW);
-    $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>' + area.toFixed(2) + '</strong><br><small>sq ft</small>');
-    $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', area);
+    if (clientH > 0 && clientW > 0) {
+        const stdH = roundUpToMultiple(clientH, multiple);
+        const stdW = roundUpToMultiple(clientW, multiple);
+        const area = calculateArea(stdH, stdW);
+        
+        $(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(stdH);
+        $(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(stdW);
+        $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>' + area.toFixed(2) + '</strong><br><small>sq ft</small>');
+        $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', area);
+    } else {
+        $(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(clientH > 0 ? roundUpToMultiple(clientH, multiple) : '');
+        $(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(clientW > 0 ? roundUpToMultiple(clientW, multiple) : '');
+        $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>0.00</strong><br><small>sq ft</small>');
+        $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', 0);
+    }
 }
 
 // Calculate row amount - FIXED: Discount properly affects amount
@@ -1044,13 +1092,16 @@ function loadHoldBillsList() {
             tbody.empty();
             $.each(res.data, function(i, bill) {
                 let row = `<tr>
-                    <td>${bill.hold_no}</td>
+                    <td><strong class="text-primary">${bill.hold_no}</strong></td>
                     <td>${bill.hold_date}</td>
                     <td>${bill.customer_name}</td>
                     <td>₨ ${parseFloat(bill.grand_total).toFixed(2)}</td>
                     <td>
-                        <button class="btn btn-sm btn-success load-hold" data-id="${bill.id}"><i class="fas fa-download"></i> Load</button>
-                        <button class="btn btn-sm btn-danger delete-hold" data-id="${bill.id}"><i class="fas fa-trash"></i> Delete</button>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-success load-hold" data-id="${bill.id}" title="Load into Form"><i class="fas fa-download mr-1"></i> Load</button>
+                            <a href="print_hold_bill.php?id=${bill.id}" target="_blank" class="btn btn-info" title="Print / Download PDF"><i class="fas fa-file-pdf mr-1"></i> PDF</a>
+                            <button class="btn btn-danger delete-hold" data-id="${bill.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 </tr>`;
                 tbody.append(row);
@@ -1204,8 +1255,8 @@ $(document).ready(function() {
     // Initialize select2 for customer dropdown
     $('#customer_id').select2({
         theme: 'bootstrap4',
-        placeholder: 'Search customer...',
-        allowClear: true
+        placeholder: '-- Select or Type to Search Customer --',
+        width: '100%'
     });
     
     // Add first product group
@@ -1216,6 +1267,21 @@ $(document).ready(function() {
         addProductGroup();
     });
     
+    // Quick Walk-In Customer Button
+    $('#quickWalkInBtn').on('click', function() {
+        let walkinId = $('#customer_id option[data-walkin="1"]').val();
+        if(walkinId) {
+            $('#customer_id').val(walkinId).trigger('change');
+        } else {
+            $('#customer_id option').each(function() {
+                if($(this).text().toLowerCase().includes('walk-in')) {
+                    $('#customer_id').val($(this).val()).trigger('change');
+                    return false;
+                }
+            });
+        }
+    });
+
     // New Customer Button
     $('#newCustomerBtn').on('click', function() {
         $('#newCustomerModal').modal('show');

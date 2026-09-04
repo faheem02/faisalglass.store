@@ -11,7 +11,7 @@
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');  // Update with your DB username
 define('DB_PASS', '');   // Update with your DB password
-define('DB_NAME', 'faysal_glass');
+define('DB_NAME', 'faysal_glass_live');
 
 // Create connection
 $conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);

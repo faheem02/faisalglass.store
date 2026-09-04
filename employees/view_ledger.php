@@ -20,22 +20,26 @@ $page_title = "View Employee Ledger";
 $success_msg = '';
 $error_msg = '';
 
-// Handle Delete Employee (soft delete - deactivates the employee)
+// Handle Delete Employee (hard delete - removes employee and related records)
 if(isset($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
     
-    // Soft delete: deactivate instead of removing the row. Ledger, salary,
-    // payment and cashbook/bankbook records are kept intact (they stay visible
-    // in reports and ledgers). A hard DELETE would fail on servers where the
-    // employee_ledger table holds a foreign key (employee_ledger_ibfk_1).
-    $delete_query = "UPDATE employees SET status = 0 WHERE id = $delete_id AND status = 1";
-    if(mysqli_query($conn, $delete_query)) {
+    mysqli_begin_transaction($conn);
+    try {
+        mysqli_query($conn, "DELETE FROM employee_ledger WHERE employee_id = $delete_id");
+        mysqli_query($conn, "DELETE FROM employee_payments WHERE employee_id = $delete_id");
+        mysqli_query($conn, "DELETE FROM employee_salary WHERE employee_id = $delete_id");
+        mysqli_query($conn, "DELETE FROM employees WHERE id = $delete_id");
+        
         if(mysqli_affected_rows($conn) > 0) {
+            mysqli_commit($conn);
             $success_msg = "Employee deleted successfully!";
         } else {
-            $success_msg = "Employee is already deleted/inactive.";
+            mysqli_rollback($conn);
+            $success_msg = "Employee not found or already deleted.";
         }
-    } else {
+    } catch(Exception $e) {
+        mysqli_rollback($conn);
         $error_msg = "Failed to delete employee!";
     }
 }
@@ -610,12 +614,12 @@ function toggleStatus(id, currentStatus) {
 function confirmDelete(id) {
     Swal.fire({
         title: 'Are you sure?',
-        text: "This employee will be deactivated and removed from active lists. Ledger/salary/history will be preserved.",
+        text: "This employee and all related records (ledger, salary, payments) will be permanently deleted!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, deactivate!',
+        confirmButtonText: 'Yes, delete!',
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {

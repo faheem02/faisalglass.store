@@ -31,17 +31,18 @@ if(!$customer) {
 }
 
 // Get opening balance (balance before from_date)
-$opening_query = "SELECT balance FROM customer_ledger 
+$opening_query = "SELECT COALESCE(SUM(debit) - SUM(credit), 0) as balance 
+                  FROM customer_ledger 
                   WHERE customer_id = $customer_id 
-                  AND date < '$from_date' 
-                  ORDER BY date DESC, id DESC LIMIT 1";
+                  AND date < '$from_date'";
 $opening_result = mysqli_query($conn, $opening_query);
-
-if(mysqli_num_rows($opening_result) > 0) {
-    $opening_balance = floatval(mysqli_fetch_assoc($opening_result)['balance']);
+$opening_balance = 0;
+if($opening_result && mysqli_num_rows($opening_result) > 0) {
+    $opening_data = mysqli_fetch_assoc($opening_result);
+    $opening_balance = floatval($opening_data['balance']);
 } else {
-    $opening_balance = floatval($customer['opening_balance']);
-    if($customer['balance_type'] == 'payable') {
+    $opening_balance = floatval($customer['opening_balance'] ?? 0);
+    if(($customer['balance_type'] ?? '') == 'payable') {
         $opening_balance = -$opening_balance;
     }
 }
@@ -55,27 +56,6 @@ $ledger_query = "SELECT cl.*, s.invoice_no
                  ORDER BY cl.date ASC, cl.id ASC";
 $ledger_result = mysqli_query($conn, $ledger_query);
 $has_entries = ($ledger_result && mysqli_num_rows($ledger_result) > 0);
-
-// Get opening balance correctly
-$opening_query = "SELECT COALESCE(SUM(debit) - SUM(credit), 0) as balance 
-                  FROM customer_ledger 
-                  WHERE customer_id = $customer_id 
-                  AND date < '$from_date'";
-$opening_result = mysqli_query($conn, $opening_query);
-$opening_balance = 0;
-if($opening_result && mysqli_num_rows($opening_result) > 0) {
-    $opening_data = mysqli_fetch_assoc($opening_result);
-    $opening_balance = floatval($opening_data['balance']);
-} else {
-    $opening_entry_query = "SELECT debit, credit FROM customer_ledger 
-                            WHERE customer_id = $customer_id AND reference_type = 'OPENING'
-                            ORDER BY id ASC LIMIT 1";
-    $opening_entry_result = mysqli_query($conn, $opening_entry_query);
-    if($opening_entry_result && mysqli_num_rows($opening_entry_result) > 0) {
-        $opening_entry = mysqli_fetch_assoc($opening_entry_result);
-        $opening_balance = floatval($opening_entry['debit']) - floatval($opening_entry['credit']);
-    }
-}
 
 // Get active bank accounts for modal
 $bank_query = "SELECT * FROM bank_accounts WHERE status = 1 ORDER BY bank_name";
@@ -291,7 +271,7 @@ $current_balance = floatval($customer['current_balance']);
                                         <?php if(mysqli_num_rows($ledger_result) > 0): while($row = mysqli_fetch_assoc($ledger_result)):
                                             $debit = floatval($row['debit']);
                                             $credit = floatval($row['credit']);
-                                            $running_balance = floatval($row['balance']);
+                                            $running_balance += ($debit - $credit);
 
                                             $badge_class = '';
                                             $type_label = '';
@@ -537,13 +517,9 @@ $current_balance = floatval($customer['current_balance']);
                                     var entryDate = $('#entryDate').val();
                                     var curFrom = '<?php echo $from_date; ?>';
                                     var curTo = '<?php echo $to_date; ?>';
-                                    if (entryDate < curFrom || entryDate > curTo) {
-                                        var newFrom = entryDate < curFrom ? entryDate : curFrom;
-                                        var newTo = entryDate > curTo ? entryDate : curTo;
-                                        window.location.href = 'customer_ledger.php?id=<?php echo $customer_id; ?>&from_date=' + newFrom + '&to_date=' + newTo;
-                                    } else {
-                                        location.reload();
-                                    }
+                                    var newFrom = (entryDate && entryDate < curFrom) ? entryDate : curFrom;
+                                    var newTo = (entryDate && entryDate > curTo) ? entryDate : curTo;
+                                    window.location.href = 'customer_ledger.php?id=<?php echo $customer_id; ?>&from_date=' + newFrom + '&to_date=' + newTo;
                                 });
                             } else {
                                 Swal.fire('Error', res.message, 'error');
@@ -581,7 +557,7 @@ $current_balance = floatval($customer['current_balance']);
         <?php if($has_entries): ?>
         try {
             $('#ledgerTable').DataTable({
-                "order": [[0, "asc"]],
+                "ordering": false,
                 "pageLength": 25,
                 "language": {
                     "search": "Search:",

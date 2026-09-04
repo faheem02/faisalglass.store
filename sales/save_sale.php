@@ -76,8 +76,14 @@ include('../includes/database.php');
 include('../includes/txt.php');
 
 if(isset($_POST['save_sale'])) {
-    $sale_date = mysqli_real_escape_string($conn, $_POST['sale_date'] ?? '');
+    $sale_date = mysqli_real_escape_string($conn, $_POST['sale_date'] ?? date('Y-m-d'));
     $customer_id = intval($_POST['customer_id'] ?? 0);
+    if($customer_id <= 0) {
+        $walkin_q = mysqli_query($conn, "SELECT id FROM customers WHERE customer_code = 'WALK-IN' OR customer_name = 'Walk-in Customer' LIMIT 1");
+        if($walkin_q && mysqli_num_rows($walkin_q) > 0) {
+            $customer_id = intval(mysqli_fetch_assoc($walkin_q)['id']);
+        }
+    }
     $subtotal = floatval($_POST['subtotal'] ?? 0);
     $other_charges = floatval($_POST['other_charges'] ?? 0);
     $grand_total = floatval($_POST['grand_total'] ?? 0);
