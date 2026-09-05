@@ -33,6 +33,8 @@ if(isset($_GET['action'])) {
         
         $hold_date = date('Y-m-d');
         $customer_id = intval($data['customer_id'] ?? 0);
+        $walk_in_customer_name = mysqli_real_escape_string($conn, $data['walk_in_customer_name'] ?? '');
+        $walk_in_customer_phone = mysqli_real_escape_string($conn, $data['walk_in_customer_phone'] ?? '');
         $subtotal = floatval($data['subtotal'] ?? 0);
         $discount_percentage = floatval($data['discount_percentage'] ?? 0);
         $discount_amount = floatval($data['discount_amount'] ?? 0);
@@ -55,11 +57,11 @@ if(isset($_GET['action'])) {
         
         mysqli_begin_transaction($conn);
         try {
-            $stmt = mysqli_prepare($conn, "INSERT INTO hold_sales_master (hold_no, hold_date, customer_id, subtotal, discount_percentage, discount_amount, other_charges, grand_total, remarks, created_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hold')");
+            $stmt = mysqli_prepare($conn, "INSERT INTO hold_sales_master (hold_no, hold_date, customer_id, walk_in_customer_name, walk_in_customer_phone, subtotal, discount_percentage, discount_amount, other_charges, grand_total, remarks, created_by, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'hold')");
             if(!$stmt) {
                 throw new Exception('Prepare failed (hold_sales_master): ' . mysqli_error($conn));
             }
-            mysqli_stmt_bind_param($stmt, "ssidddddsi", $hold_no, $hold_date, $customer_id, $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, $remarks, $created_by);
+            mysqli_stmt_bind_param($stmt, "ssissdddddsi", $hold_no, $hold_date, $customer_id, $walk_in_customer_name, $walk_in_customer_phone, $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, $remarks, $created_by);
             mysqli_stmt_execute($stmt);
             $hold_id = mysqli_insert_id($conn);
             mysqli_stmt_close($stmt);
@@ -112,7 +114,7 @@ if(isset($_GET['action'])) {
     
     // Get list of Hold Bills
     if($_GET['action'] == 'get_hold_bills') {
-        $sql = "SELECT h.id, h.hold_no, h.hold_date, COALESCE(c.customer_name, 'Walk-In') as customer_name, h.grand_total 
+        $sql = "SELECT h.id, h.hold_no, h.hold_date, COALESCE(NULLIF(h.walk_in_customer_name, ''), NULLIF(c.customer_name, ''), 'Walk-In') as customer_name, h.walk_in_customer_name, h.grand_total 
                 FROM hold_sales_master h 
                 LEFT JOIN customers c ON h.customer_id = c.id 
                 WHERE h.status = 'hold' 
@@ -147,6 +149,8 @@ if(isset($_GET['action'])) {
             'success' => true,
             'hold_id' => $master['id'],
             'customer_id' => $master['customer_id'],
+            'walk_in_customer_name' => $master['walk_in_customer_name'] ?? '',
+            'walk_in_customer_phone' => $master['walk_in_customer_phone'] ?? '',
             'subtotal' => $master['subtotal'],
             'discount_percentage' => $master['discount_percentage'],
             'discount_amount' => $master['discount_amount'],
@@ -219,6 +223,8 @@ if ($hold_load_id > 0) {
         $hold_load_data = [
             'hold_id' => $hold_master['id'],
             'customer_id' => $hold_master['customer_id'],
+            'walk_in_customer_name' => $hold_master['walk_in_customer_name'] ?? '',
+            'walk_in_customer_phone' => $hold_master['walk_in_customer_phone'] ?? '',
             'subtotal' => $hold_master['subtotal'],
             'discount_percentage' => $hold_master['discount_percentage'],
             'discount_amount' => $hold_master['discount_amount'],
@@ -386,7 +392,7 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <label class="mb-0 font-weight-bold"><i class="fas fa-user text-success mr-1"></i> Customer</label>
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-success font-weight-bold py-0 px-2 mr-1" id="quickWalkInBtn" title="Select Walk-in Customer" style="height: 26px; font-size: 12px;">
+                                        <button type="button" class="btn btn-sm btn-success font-weight-bold py-0 px-2 mr-1" id="quickWalkInBtn" title="Add Walker-in Customer Name & Phone" style="height: 26px; font-size: 12px;">
                                             <i class="fas fa-walking mr-1"></i> Walk-In
                                         </button>
                                         <button type="button" class="btn btn-sm btn-warning font-weight-bold py-0 px-2" id="newCustomerBtn" title="New Customer Account" style="height: 26px; font-size: 12px;">
@@ -426,10 +432,13 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label><i class="fas fa-receipt text-success mr-1"></i> Reference Number</label>
-                                <input type="text" name="reference_no" class="form-control" placeholder="Enter reference number">
+                                <input type="text" name="reference_no" class="form-control" placeholder="Enter reference number" value="<?php echo $edit_data ? htmlspecialchars($edit_data['reference_no']) : ''; ?>">
                             </div>
                         </div>
                     </div>
+                    
+                    <input type="hidden" name="walk_in_customer_name" id="walk_in_customer_name" value="<?php echo $edit_data ? htmlspecialchars($edit_data['walk_in_customer_name']) : ''; ?>">
+                    <input type="hidden" name="walk_in_customer_phone" id="walk_in_customer_phone" value="<?php echo $edit_data ? htmlspecialchars($edit_data['walk_in_customer_phone']) : ''; ?>">
                     
                     <div class="row">
                         <div class="col-md-12">
@@ -567,19 +576,47 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
     </footer>
 </div>
 
+<!-- Walk-In Customer Modal -->
+<div class="modal fade" id="walkinModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title"><i class="fas fa-walking"></i> Walk-In Customer</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><i class="fas fa-user text-success mr-1"></i> Customer Name</label>
+                    <input type="text" id="walkin_customer_name" class="form-control" placeholder="Enter walk-in customer name">
+                    <small class="text-muted">Example: Ali, Ahmad, Salman, etc.</small>
+                </div>
+                <div class="form-group mb-0">
+                    <label><i class="fas fa-phone text-success mr-1"></i> Phone Number (Optional)</label>
+                    <input type="text" id="walkin_customer_phone" class="form-control" placeholder="Enter phone number">
+                    <small class="text-muted">This name/phone will be saved on the invoice only.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="saveWalkinBtn"><i class="fas fa-check mr-1"></i> Continue</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- New Customer Modal -->
 <div class="modal fade" id="newCustomerModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="fas fa-user-plus"></i> New Walk-in Customer</h5>
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> New Customer Account</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
                     <label>Customer Name</label>
                     <input type="text" id="new_customer_name_input" class="form-control" placeholder="Enter customer name">
-                    <small class="text-muted">Example: Ali, Ahmad, Salman, etc.</small>
+                    <small class="text-muted">Creates a permanent customer account (CUS-XXXX code).</small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -718,7 +755,11 @@ function addProductGroup(savedRate = null) {
                             </tr>
                         </tbody>
                         <tfoot>
-                            <tr><td colspan="12"><button type="button" class="btn btn-sm btn-success add-size-row" data-group-id="${groupId}"><i class="fas fa-plus-circle"></i> Add Size</button></td></tr>
+                            <tr class="group-area-summary" data-group-id="${groupId}" style="background:#e8f5e9;">
+                                <td colspan="5" class="text-right font-weight-bold"><i class="fas fa-vector-square mr-1"></i> Total Area:</td>
+                                <td colspan="2" class="text-left font-weight-bold" style="font-size:15px; color:#1e7e34;"><span class="group-total-area" data-group-id="${groupId}">0.00</span> sq ft</td>
+                                <td colspan="5"><button type="button" class="btn btn-sm btn-success add-size-row" data-group-id="${groupId}"><i class="fas fa-plus-circle"></i> Add Size</button></td>
+                            </tr>
                         </tfoot>
                     </table>
                 </div>
@@ -969,6 +1010,16 @@ function calculateAllTotals() {
     else $('#newBalance').css('color', '#1a1a1a');
     if(grandTotal > 0) $('#grandTotal').css('color', '#dc3545');
     
+    // Calculate per-group total area
+    $('.product-group-card').each(function() {
+        const groupId = $(this).data('group-id');
+        let groupTotalArea = 0;
+        $(`.total-area-cell[data-group-id="${groupId}"]`).each(function() {
+            groupTotalArea += parseFloat($(this).data('value')) || 0;
+        });
+        $(`.group-total-area[data-group-id="${groupId}"]`).text(groupTotalArea.toFixed(2));
+    });
+    
     // Collect all product data for submission
     collectProductData();
 }
@@ -1050,6 +1101,8 @@ $('#holdBillBtn').on('click', function(e) {
     
     const holdData = {
         customer_id: $('#customer_id').val(),
+        walk_in_customer_name: $('#walk_in_customer_name').val() || '',
+        walk_in_customer_phone: $('#walk_in_customer_phone').val() || '',
         subtotal: subtotalVal,
         discount_percentage: discPercentOverall.toFixed(2),
         discount_amount: totalDiscountVal,
@@ -1094,7 +1147,7 @@ function loadHoldBillsList() {
                 let row = `<tr>
                     <td><strong class="text-primary">${bill.hold_no}</strong></td>
                     <td>${bill.hold_date}</td>
-                    <td>${bill.customer_name}</td>
+                    <td>${bill.walk_in_customer_name ? `<strong>${bill.walk_in_customer_name}</strong> <small class="text-info">(Walk-In)</small>` : bill.customer_name}</td>
                     <td>₨ ${parseFloat(bill.grand_total).toFixed(2)}</td>
                     <td>
                         <div class="btn-group btn-group-sm">
@@ -1113,6 +1166,28 @@ function loadHoldBillsList() {
     });
 }
 
+// Show the walk-in customer name/phone in the customer field + mobile info
+// Renames the WALK-IN option label when a name is set, restores it otherwise
+function toggleWalkinFields() {
+    const selected = $('#customer_id').find(':selected');
+    const isWalkin = (selected.data('walkin') == '1');
+    const walkinOpt = $('#customer_id option[data-walkin="1"]');
+    const walkinName = $('#walk_in_customer_name').val() || '';
+    if(isWalkin && walkinName) {
+        const walkinPhone = $('#walk_in_customer_phone').val() || '';
+        const label = walkinName + ' (Walk-In)' + (walkinPhone ? ' - ' + walkinPhone : '');
+        if(walkinOpt.length && walkinOpt.text() !== label) {
+            walkinOpt.text(label);
+            $('#customer_id').trigger('change.select2');
+        }
+        $('#customer_mobile').text(walkinPhone || '-');
+    } else if(walkinOpt.length && walkinOriginalText && walkinOpt.text() !== walkinOriginalText) {
+        walkinOpt.text(walkinOriginalText);
+        $('#customer_id').trigger('change.select2');
+    }
+    return isWalkin;
+}
+
 // Populate the sale form from a hold bill payload (shared by modal load + ?load_hold_id)
 function populateHoldForm(res) {
     // Set hold_id hidden field
@@ -1122,7 +1197,11 @@ function populateHoldForm(res) {
     // Set customer
     $('#customer_id').val(res.customer_id).trigger('change');
     
-    // Set totals
+    // Set walk-in fields (hidden unless the selected customer is a walk-in)
+    $('#walk_in_customer_name').val(res.walk_in_customer_name || '');
+    $('#walk_in_customer_phone').val(res.walk_in_customer_phone || '');
+    toggleWalkinFields();
+    
     $('#other_charges').val(res.other_charges);
     $('textarea[name="remarks"]').val(res.remarks || '');
     
@@ -1259,6 +1338,10 @@ $(document).ready(function() {
         width: '100%'
     });
     
+    // Remember the original WALK-IN option label so we can restore it later
+    const walkinOpt = $('#customer_id option[data-walkin="1"]');
+    window.walkinOriginalText = walkinOpt.length ? walkinOpt.text() : '';
+    
     // Add first product group
     addProductGroup();
     
@@ -1267,8 +1350,27 @@ $(document).ready(function() {
         addProductGroup();
     });
     
-    // Quick Walk-In Customer Button
+    // Quick Walk-In Customer Button → opens walk-in modal
     $('#quickWalkInBtn').on('click', function() {
+        $('#walkin_customer_name').val('');
+        $('#walkin_customer_phone').val('');
+        $('#walkinModal').modal('show');
+    });
+
+    // Save Walk-In Customer (name/phone from modal)
+    $('#saveWalkinBtn').on('click', function() {
+        const walkinName = $('#walkin_customer_name').val().trim();
+        if(walkinName === '') {
+            Swal.fire({ title: 'Error!', text: 'Please enter walk-in customer name!', icon: 'error' });
+            return;
+        }
+        const walkinPhone = $('#walkin_customer_phone').val().trim();
+        
+        // Store walk-in details in hidden fields (sent with form)
+        $('#walk_in_customer_name').val(walkinName);
+        $('#walk_in_customer_phone').val(walkinPhone);
+        
+        // Select the WALK-IN customer in the dropdown
         let walkinId = $('#customer_id option[data-walkin="1"]').val();
         if(walkinId) {
             $('#customer_id').val(walkinId).trigger('change');
@@ -1280,6 +1382,9 @@ $(document).ready(function() {
                 }
             });
         }
+        
+        // Close the walk-in modal (field + mobile are updated by the change event)
+        $('#walkinModal').modal('hide');
     });
 
     // New Customer Button
@@ -1354,6 +1459,12 @@ $(document).ready(function() {
         $('#customer_balance').text('₨ ' + parseFloat(balance).toFixed(2));
         $('#prevBalance').text('₨ ' + parseFloat(balance).toFixed(2));
         $('#prevBalance').data('value', balance);
+        // Clear walk-in details if a non-walk-in customer is selected
+        if(selected.data('walkin') != '1') {
+            $('#walk_in_customer_name').val('');
+            $('#walk_in_customer_phone').val('');
+        }
+        toggleWalkinFields();
         calculateAllTotals();
     });
     

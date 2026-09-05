@@ -203,7 +203,7 @@ $bank_result = mysqli_query($conn, $bank_query);
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <label class="required-field mb-0 font-weight-bold"><i class="fas fa-user text-success mr-1"></i> Customer</label>
                                             <div>
-                                                <button type="button" class="btn btn-sm btn-success font-weight-bold py-0 px-2 mr-1" id="quickWalkInBtn" title="Select Walk-in Customer" style="height: 26px; font-size: 12px;">
+                                                <button type="button" class="btn btn-sm btn-success font-weight-bold py-0 px-2 mr-1" id="quickWalkInBtn" title="Add Walk-in Customer Name & Phone" style="height: 26px; font-size: 12px;">
                                                     <i class="fas fa-walking mr-1"></i> Walk-In
                                                 </button>
                                                 <button type="button" class="btn btn-sm btn-warning font-weight-bold py-0 px-2" id="newCustomerBtn" title="New Customer Account" style="height: 26px; font-size: 12px;">
@@ -250,6 +250,9 @@ $bank_result = mysqli_query($conn, $bank_query);
                                     </div>
                                 </div>
                             </div>
+                            
+                            <input type="hidden" name="walk_in_customer_name" id="walk_in_customer_name" value="<?php echo htmlspecialchars($edit_data['walk_in_customer_name'] ?? ''); ?>">
+                            <input type="hidden" name="walk_in_customer_phone" id="walk_in_customer_phone" value="<?php echo htmlspecialchars($edit_data['walk_in_customer_phone'] ?? ''); ?>">
                             
                             <div class="row">
                                 <div class="col-md-12">
@@ -403,12 +406,38 @@ $bank_result = mysqli_query($conn, $bank_query);
     </div>
 </div>
 
+<!-- Walk-In Customer Modal -->
+<div class="modal fade" id="walkinModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title text-white"><i class="fas fa-walking"></i> Walk-In Customer</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Customer Name *</label>
+                    <input type="text" id="walkin_customer_name" class="form-control" placeholder="Enter walk-in customer name">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number (Optional)</label>
+                    <input type="text" id="walkin_customer_phone" class="form-control" placeholder="Enter phone number">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="saveWalkinBtn">Save Walk-In</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- New Customer Modal -->
 <div class="modal fade" id="newCustomerModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="fas fa-user-plus"></i> New Customer</h5>
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> New Customer Account</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
@@ -622,6 +651,10 @@ $(document).ready(function() {
         placeholder: '-- Select or Type to Search Customer --',
         width: '100%'
     });
+    
+    // Remember the original WALK-IN option label so we can restore it later
+    const walkinOptEl = $('#customer_id option[data-walkin="1"]');
+    window.walkinOriginalText = walkinOptEl.length ? walkinOptEl.text() : '';
 
     // Load edit items or add one empty row
     if(isEdit && editItems.length > 0) {
@@ -636,6 +669,28 @@ $(document).ready(function() {
         addProductRow();
     }
     
+    // Show the walk-in customer name/phone in the customer field + mobile info
+    // Renames the WALK-IN option label when a name is set, restores it otherwise
+    function toggleWalkinFields() {
+        const selected = $('#customer_id').find(':selected');
+        const isWalkin = (selected.data('walkin') == '1');
+        const walkinOpt = $('#customer_id option[data-walkin="1"]');
+        const walkinName = $('#walk_in_customer_name').val() || '';
+        if(isWalkin && walkinName) {
+            const walkinPhone = $('#walk_in_customer_phone').val() || '';
+            const label = walkinName + ' (Walk-In)' + (walkinPhone ? ' - ' + walkinPhone : '');
+            if(walkinOpt.length && walkinOpt.text() !== label) {
+                walkinOpt.text(label);
+                $('#customer_id').trigger('change.select2');
+            }
+            $('#customer_mobile').text(walkinPhone || '-');
+        } else if(walkinOpt.length && window.walkinOriginalText && walkinOpt.text() !== window.walkinOriginalText) {
+            walkinOpt.text(window.walkinOriginalText);
+            $('#customer_id').trigger('change.select2');
+        }
+        return isWalkin;
+    }
+
     $('#customer_id').on('change', function() {
         var selected = $(this).find(':selected');
         var mobile = selected.data('mobile') || '-';
@@ -645,11 +700,36 @@ $(document).ready(function() {
         $('#customer_address').text(address);
         $('#prevBalance').text('₨ ' + parseFloat(balance).toFixed(2));
         $('#prevBalance').data('value', balance);
+        // Clear walk-in details if a non-walk-in customer is selected
+        if(selected.data('walkin') != '1') {
+            $('#walk_in_customer_name').val('');
+            $('#walk_in_customer_phone').val('');
+        }
+        toggleWalkinFields();
         calculateTotals();
     });
     
-    // Quick Walk-In Customer Button
+    // Quick Walk-In Customer Button → opens walk-in modal
     $('#quickWalkInBtn').on('click', function() {
+        $('#walkin_customer_name').val('');
+        $('#walkin_customer_phone').val('');
+        $('#walkinModal').modal('show');
+    });
+
+    // Save Walk-In Customer (name/phone from modal)
+    $('#saveWalkinBtn').on('click', function() {
+        const walkinName = $('#walkin_customer_name').val().trim();
+        if(walkinName === '') {
+            Swal.fire({ title: 'Error!', text: 'Please enter walk-in customer name!', icon: 'error' });
+            return;
+        }
+        const walkinPhone = $('#walkin_customer_phone').val().trim();
+        
+        // Store walk-in details in hidden fields (sent with form)
+        $('#walk_in_customer_name').val(walkinName);
+        $('#walk_in_customer_phone').val(walkinPhone);
+        
+        // Select the WALK-IN customer in the dropdown
         let walkinId = $('#customer_id option[data-walkin="1"]').val();
         if(walkinId) {
             $('#customer_id').val(walkinId).trigger('change');
@@ -661,6 +741,9 @@ $(document).ready(function() {
                 }
             });
         }
+        
+        // Close the walk-in modal (field + mobile are updated by the change event)
+        $('#walkinModal').modal('hide');
     });
 
     // New Customer Button

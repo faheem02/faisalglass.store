@@ -446,11 +446,17 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     <div class="invoice-meta-container">
         <div class="meta-customer-box">
             <div class="meta-sub-header">BILL TO</div>
-            <div class="meta-customer-name"><?php echo trim(htmlspecialchars($sale['customer_name'])); ?></div>
-            <?php if(!empty($sale['customer_code'])): ?>
+            <div class="meta-customer-name"><?php if(!empty($sale['walk_in_customer_name'])): ?><?php echo htmlspecialchars($sale['walk_in_customer_name']); ?><?php else: ?><?php echo trim(htmlspecialchars($sale['customer_name'])); ?><?php endif; ?></div>
+            <?php if(!empty($sale['walk_in_customer_name'])): ?>
+                <div class="meta-customer-code">Walk-In <?php echo !empty($sale['walk_in_customer_phone']) ? ' - ' . htmlspecialchars($sale['walk_in_customer_phone']) : ''; ?></div>
+            <?php elseif(!empty($sale['customer_code'])): ?>
                 <div class="meta-customer-code">Customer ID: <?php echo htmlspecialchars($sale['customer_code']); ?></div>
             <?php endif; ?>
-            <?php if(!empty($sale['mobile'])): ?>
+            <?php if(!empty($sale['walk_in_customer_name'])): ?>
+                <?php if(!empty($sale['walk_in_customer_phone'])): ?>
+                <div class="meta-customer-detail"><i class="fas fa-phone-alt"></i> <?php echo htmlspecialchars($sale['walk_in_customer_phone']); ?></div>
+                <?php endif; ?>
+            <?php elseif(!empty($sale['mobile'])): ?>
                 <div class="meta-customer-detail"><i class="fas fa-phone-alt"></i> <?php echo htmlspecialchars($sale['mobile']); ?></div>
             <?php endif; ?>
             <?php if(!empty($sale['address'])): ?>

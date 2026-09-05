@@ -461,8 +461,13 @@ $page_title = "Sale Report";
                                                 </td>
                                                 <td><?php echo date('d-m-Y', strtotime($sale['sale_date'])); ?></td>
                                                 <td>
+                                                    <?php if(!empty($sale['walk_in_customer_name'])): ?>
+                                                    <div class="customer-name"><?php echo htmlspecialchars($sale['walk_in_customer_name']); ?></div>
+                                                    <div class="customer-code text-info"><i class="fas fa-walking mr-1"></i>Walk-In<?php echo !empty($sale['walk_in_customer_phone']) ? ' - ' . htmlspecialchars($sale['walk_in_customer_phone']) : ''; ?></div>
+                                                    <?php else: ?>
                                                     <div class="customer-name"><?php echo htmlspecialchars($sale['customer_name'] ?? 'Walk-In Customer'); ?></div>
                                                     <div class="customer-code"><?php echo htmlspecialchars($sale['customer_code'] ?? ''); ?></div>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td>
                                                     <?php 

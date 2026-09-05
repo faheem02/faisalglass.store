@@ -43,6 +43,8 @@ $sales_query = "SELECT
                     customer_id as party_id,
                     COALESCE((SELECT customer_name FROM customers WHERE id = sale_master.customer_id), 'Walk-In Customer') as party_name,
                     COALESCE((SELECT customer_code FROM customers WHERE id = sale_master.customer_id), 'CUS-0000') as party_code,
+                    walk_in_customer_name,
+                    walk_in_customer_phone,
                     grand_total as total_amount,
                     payment_type
                 FROM sale_master 
@@ -452,8 +454,13 @@ $page_title = "Invoice Report";
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?php echo htmlspecialchars($invoice['party_name']); ?>
-                        <br><small style="color:#6b7280;font-family:monospace;"><?php echo htmlspecialchars($invoice['party_code']); ?></small>
+                        <?php if($invoice['invoice_type'] == 'SALE' && !empty($invoice['walk_in_customer_name'])): ?>
+                            <?php echo htmlspecialchars($invoice['walk_in_customer_name']); ?>
+                            <br><small style="color:#0f6bb5;font-family:monospace;">Walk-In <?php echo !empty($invoice['walk_in_customer_phone']) ? ' - ' . htmlspecialchars($invoice['walk_in_customer_phone']) : ''; ?></small>
+                        <?php else: ?>
+                            <?php echo htmlspecialchars($invoice['party_name']); ?>
+                            <br><small style="color:#6b7280;font-family:monospace;"><?php echo htmlspecialchars($invoice['party_code']); ?></small>
+                        <?php endif; ?>
                     </td>
                     <td class="text-center">
                         <?php

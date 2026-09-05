@@ -418,10 +418,10 @@ if($details_result) {
     <div class="invoice-meta-container">
         <div class="meta-customer-box">
             <div class="meta-sub-header">Customer Details</div>
-            <div class="meta-customer-name"><?php echo !empty($hold['customer_name']) ? htmlspecialchars($hold['customer_name']) : 'Walk-In Customer'; ?></div>
+            <div class="meta-customer-name"><?php if(!empty($hold['walk_in_customer_name'])): ?><?php echo htmlspecialchars($hold['walk_in_customer_name']); ?><?php else: ?><?php echo !empty($hold['customer_name']) ? htmlspecialchars($hold['customer_name']) : 'Walk-In Customer'; ?><?php endif; ?></div>
             <div class="meta-customer-details">
-                <?php if(!empty($hold['customer_code'])): ?><div><strong>Code:</strong> <?php echo htmlspecialchars($hold['customer_code']); ?></div><?php endif; ?>
-                <?php if(!empty($hold['mobile'])): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($hold['mobile']); ?></div><?php endif; ?>
+                <?php if(empty($hold['walk_in_customer_name']) && !empty($hold['customer_code'])): ?><div><strong>Code:</strong> <?php echo htmlspecialchars($hold['customer_code']); ?></div><?php endif; ?>
+                <?php if(!empty($hold['walk_in_customer_phone'])): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($hold['walk_in_customer_phone']); ?></div><?php elseif(empty($hold['walk_in_customer_name']) && !empty($hold['mobile'])): ?><div><strong>Phone:</strong> <?php echo htmlspecialchars($hold['mobile']); ?></div><?php endif; ?>
                 <?php if(!empty($hold['address'])): ?><div><strong>Address:</strong> <?php echo htmlspecialchars($hold['address']); ?></div><?php endif; ?>
             </div>
         </div>

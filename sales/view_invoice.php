@@ -153,7 +153,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 <tr>
     <td class="font-weight-bold text-primary"><?php echo $sale['invoice_no']; ?></td>
     <td><?php echo date('d-m-Y', strtotime($sale['sale_date'])); ?></td>
-    <td><strong><?php echo $sale['customer_name']; ?></strong><br><small><?php echo $sale['customer_code']; ?></small></td>
+    <td><?php if(!empty($sale['walk_in_customer_name'])): ?><strong><?php echo htmlspecialchars($sale['walk_in_customer_name']); ?></strong><br><small class="text-info"><i class="fas fa-walking mr-1"></i>Walk-In<?php echo !empty($sale['walk_in_customer_phone']) ? ' - ' . htmlspecialchars($sale['walk_in_customer_phone']) : ''; ?></small><?php else: ?><strong><?php echo $sale['customer_name']; ?></strong><br><small><?php echo $sale['customer_code']; ?></small><?php endif; ?></td>
     <td class="text-right"><?php echo formatCurrency($sale['grand_total']); ?></td>
     <td class="text-right text-success"><?php echo formatCurrency($sale['received_amount']); ?></td>
     <td class="text-right text-danger"><?php echo formatCurrency($sale['remaining_amount']); ?></td>
@@ -187,7 +187,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
                 <button class="btn btn-sm btn-success receive-payment-btn" title="Receive Walk-in Payment (Due: <?php echo formatCurrency($sale['remaining_amount']); ?>)" 
                         data-id="<?php echo $sale['id']; ?>"
                         data-invoice="<?php echo htmlspecialchars($sale['invoice_no']); ?>"
-                        data-customer="<?php echo htmlspecialchars($sale['customer_name'] . ($sale['customer_code'] ? ' (' . $sale['customer_code'] . ')' : '')); ?>"
+                        data-customer="<?php if(!empty($sale['walk_in_customer_name'])): ?><?php echo htmlspecialchars($sale['walk_in_customer_name'] . (!empty($sale['walk_in_customer_phone']) ? ' (' . $sale['walk_in_customer_phone'] . ')' : '')); ?> (Walk-In)<?php else: ?><?php echo htmlspecialchars($sale['customer_name'] . ($sale['customer_code'] ? ' (' . $sale['customer_code'] . ')' : '')); ?><?php endif; ?>"
                         data-total="<?php echo $sale['grand_total']; ?>"
                         data-received="<?php echo $sale['received_amount']; ?>"
                         data-remaining="<?php echo $sale['remaining_amount']; ?>">
@@ -457,9 +457,12 @@ function openViewModal(id){
             html += '<span class="badge badge-info" style="padding:6px 14px;border-radius:20px;font-size:12px;">' + escapeHtml(s.status) + '</span>';
             html += '</div>';
             
+            var custDisplay = s.walk_in_customer_name ? (escapeHtml(s.walk_in_customer_name) + ' <small class="text-muted">(Walk-In)</small>') : (escapeHtml(c.customer_name) + '<small class="text-muted">' + escapeHtml(c.customer_code) + '</small>');
+            var mobileDisplay = s.walk_in_customer_phone ? escapeHtml(s.walk_in_customer_phone) : (c.mobile || '-');
+            
             html += '<div class="row mb-3">';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + escapeHtml(c.customer_name) + '</div><small class="text-muted">' + escapeHtml(c.customer_code) + '</small></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + escapeHtml(c.mobile || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + custDisplay + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + mobileDisplay + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Sale Date</div><div class="view-info-value">' + escapeHtml(s.sale_date) + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Payment Method</div><div class="view-info-value">' + escapeHtml(s.payment_type) + '</div></div></div>';
             html += '<div class="col-md-6 mb-2"><div class="view-info-card"><div class="view-info-label">Address</div><div class="view-info-value">' + escapeHtml(c.address || '-') + '</div></div></div>';

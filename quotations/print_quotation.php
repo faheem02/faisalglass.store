@@ -382,8 +382,19 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     <div class="info-grid">
         <div class="info-item">
             <span class="info-label">Customer Name</span>
-            <span class="info-value"><?php echo trim(htmlspecialchars($quotation['customer_name'] ?? 'Walk-In')); ?></span>
+            <span class="info-value"><?php if(!empty($quotation['walk_in_customer_name'])): ?><?php echo htmlspecialchars($quotation['walk_in_customer_name']); ?><?php else: ?><?php echo trim(htmlspecialchars($quotation['customer_name'] ?? 'Walk-In')); ?><?php endif; ?></span>
         </div>
+        <?php if(!empty($quotation['walk_in_customer_phone'])): ?>
+        <div class="info-item">
+            <span class="info-label">Phone</span>
+            <span class="info-value"><?php echo htmlspecialchars($quotation['walk_in_customer_phone']); ?></span>
+        </div>
+        <?php elseif(!empty($quotation['mobile'])): ?>
+        <div class="info-item">
+            <span class="info-label">Phone</span>
+            <span class="info-value"><?php echo htmlspecialchars($quotation['mobile']); ?></span>
+        </div>
+        <?php endif; ?>
         <div class="info-item">
             <span class="info-label">Quotation No</span>
             <span class="info-value"><?php echo $quotation['quotation_no']; ?></span>

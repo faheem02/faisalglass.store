@@ -52,6 +52,8 @@ if(isset($_POST['save_quotation'])) {
     $valid_until = !empty($_POST['valid_until']) ? "'" . mysqli_real_escape_string($conn, $_POST['valid_until']) . "'" : "NULL";
     $reference_no = mysqli_real_escape_string($conn, trim($_POST['reference_no'] ?? ''));
     $remarks = mysqli_real_escape_string($conn, trim($_POST['remarks'] ?? ''));
+    $walk_in_customer_name = mysqli_real_escape_string($conn, trim($_POST['walk_in_customer_name'] ?? ''));
+    $walk_in_customer_phone = mysqli_real_escape_string($conn, trim($_POST['walk_in_customer_phone'] ?? ''));
     $subtotal = floatval($_POST['subtotal'] ?? 0);
     $discount_amount = floatval($_POST['discount_amount'] ?? 0);
     $other_charges = floatval($_POST['other_charges'] ?? 0);
@@ -194,6 +196,8 @@ if(isset($_POST['save_quotation'])) {
                     quotation_no = '$quotation_no',
                     quotation_date = '$quotation_date',
                     customer_id = $customer_id,
+                    walk_in_customer_name = '$walk_in_customer_name',
+                    walk_in_customer_phone = '$walk_in_customer_phone',
                     valid_until = $valid_until,
                     subtotal = $subtotal,
                     discount_percentage = $discount_percentage,
@@ -233,8 +237,8 @@ if(isset($_POST['save_quotation'])) {
                 
                 $bank_acc_sql = ($bank_account_id > 0) ? $bank_account_id : "NULL";
                 $insert_master = "INSERT INTO quotation_master 
-                    (quotation_no, quotation_date, customer_id, valid_until, subtotal, discount_percentage, discount_amount, other_charges, grand_total, received_amount, remaining_amount, payment_type, bank_account_id, reference_no, remarks, status, created_by, created_at) 
-                    VALUES ('$quotation_no', '$quotation_date', $customer_id, $valid_until, $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, $received_amount, $remaining_amount, '$payment_type', $bank_acc_sql, '$reference_no', '$remarks', '$status', $created_by, NOW())";
+                    (quotation_no, quotation_date, customer_id, walk_in_customer_name, walk_in_customer_phone, valid_until, subtotal, discount_percentage, discount_amount, other_charges, grand_total, received_amount, remaining_amount, payment_type, bank_account_id, reference_no, remarks, status, created_by, created_at) 
+                    VALUES ('$quotation_no', '$quotation_date', $customer_id, '$walk_in_customer_name', '$walk_in_customer_phone', $valid_until, $subtotal, $discount_percentage, $discount_amount, $other_charges, $grand_total, $received_amount, $remaining_amount, '$payment_type', $bank_acc_sql, '$reference_no', '$remarks', '$status', $created_by, NOW())";
                 
                 if(!mysqli_query($conn, $insert_master)) {
                     throw new Exception("Failed to save quotation: " . mysqli_error($conn));

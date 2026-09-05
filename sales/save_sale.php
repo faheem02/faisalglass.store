@@ -92,6 +92,8 @@ if(isset($_POST['save_sale'])) {
     $bank_account_id = isset($_POST['bank_account_id']) ? intval($_POST['bank_account_id']) : 0;
     $reference_no = mysqli_real_escape_string($conn, trim($_POST['reference_no'] ?? ''));
     $remarks = mysqli_real_escape_string($conn, trim($_POST['remarks'] ?? ''));
+    $walk_in_customer_name = mysqli_real_escape_string($conn, trim($_POST['walk_in_customer_name'] ?? ''));
+    $walk_in_customer_phone = mysqli_real_escape_string($conn, trim($_POST['walk_in_customer_phone'] ?? ''));
     $edit_id = isset($_POST['edit_id']) ? intval($_POST['edit_id']) : 0;
     
     // Calculate remaining amount based on payment type
@@ -157,6 +159,7 @@ if(isset($_POST['save_sale'])) {
                 // Update sale_master (keep same record)
                 $update_master = "UPDATE sale_master SET 
                     sale_date = '$sale_date', customer_id = '$customer_id', 
+                    walk_in_customer_name = '$walk_in_customer_name', walk_in_customer_phone = '$walk_in_customer_phone',
                     subtotal = '$subtotal', discount_percentage = 0, discount_amount = 0, 
                     other_charges = '$other_charges', grand_total = '$grand_total', 
                     received_amount = '$received_amount', remaining_amount = '$remaining_amount', 
@@ -181,10 +184,10 @@ if(isset($_POST['save_sale'])) {
                 }
                 
                 // Insert into sale_master
-                $insert_master = "INSERT INTO sale_master (invoice_no, sale_date, customer_id, subtotal, 
+                $insert_master = "INSERT INTO sale_master (invoice_no, sale_date, customer_id, walk_in_customer_name, walk_in_customer_phone, subtotal, 
                                   discount_percentage, discount_amount, other_charges, grand_total, received_amount, 
                                   remaining_amount, payment_type, bank_account_id, reference_no, remarks, created_by) 
-                                  VALUES ('$invoice_no', '$sale_date', '$customer_id', '$subtotal', 
+                                  VALUES ('$invoice_no', '$sale_date', '$customer_id', '$walk_in_customer_name', '$walk_in_customer_phone', '$subtotal', 
                                   0, 0, '$other_charges', '$grand_total', '$received_amount', 
                                   '$remaining_amount', '$payment_type', '$bank_account_id', 
                                   '$reference_no', '$remarks', '{$_SESSION['user_id']}')";

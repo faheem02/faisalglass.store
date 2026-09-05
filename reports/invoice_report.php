@@ -47,6 +47,8 @@ $sales_query = "SELECT
                     customer_id as party_id,
                     COALESCE((SELECT customer_name FROM customers WHERE id = sale_master.customer_id), 'Walk-In Customer') as party_name,
                     COALESCE((SELECT customer_code FROM customers WHERE id = sale_master.customer_id), 'CUS-0000') as party_code,
+                    walk_in_customer_name,
+                    walk_in_customer_phone,
                     grand_total as total_amount,
                     payment_type
                 FROM sale_master 
@@ -634,6 +636,16 @@ $page_title = "Invoice Report";
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
+                                                    <?php if($invoice['invoice_type'] == 'SALE' && !empty($invoice['walk_in_customer_name'])): ?>
+                                                    <div class="party-name">
+                                                        <i class="fas fa-walking text-info mr-1"></i>
+                                                        <?php echo htmlspecialchars($invoice['walk_in_customer_name']); ?>
+                                                        <?php if(!empty($invoice['walk_in_customer_phone'])): ?><small class="text-muted"><?php echo htmlspecialchars($invoice['walk_in_customer_phone']); ?></small><?php endif; ?>
+                                                    </div>
+                                                    <div class="party-code text-info">
+                                                        <i class="fas fa-user text-info mr-1"></i> Walk-In
+                                                    </div>
+                                                    <?php else: ?>
                                                     <div class="party-name">
                                                         <i class="fas <?php echo $invoice['invoice_type'] == 'SALE' ? 'fa-user' : 'fa-building'; ?> text-success mr-1"></i>
                                                         <?php echo htmlspecialchars($invoice['party_name']); ?>
@@ -642,6 +654,7 @@ $page_title = "Invoice Report";
                                                         <i class="fas fa-barcode text-muted mr-1"></i>
                                                         <?php echo htmlspecialchars($invoice['party_code']); ?>
                                                     </div>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td>
                                                     <?php 

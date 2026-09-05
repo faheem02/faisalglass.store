@@ -230,8 +230,7 @@ $result = mysqli_query($conn, $query);
                                         <td><strong><?php echo htmlspecialchars($row['quotation_no']); ?></strong></td>
                                         <td><?php echo date('d-m-Y', strtotime($row['quotation_date'])); ?></td>
                                         <td>
-                                            <?php echo htmlspecialchars($row['customer_name'] ?? 'Walk-In'); ?>
-                                            <?php if(!empty($row['customer_code'])): ?><br><small class="text-muted"><?php echo $row['customer_code']; ?></small><?php endif; ?>
+                                            <?php if(!empty($row['walk_in_customer_name'])): ?><strong><?php echo htmlspecialchars($row['walk_in_customer_name']); ?></strong><br><small class="text-info"><i class="fas fa-walking mr-1"></i>Walk-In<?php echo !empty($row['walk_in_customer_phone']) ? ' - ' . htmlspecialchars($row['walk_in_customer_phone']) : ''; ?></small><?php else: ?><?php echo htmlspecialchars($row['customer_name'] ?? 'Walk-In'); ?><?php if(!empty($row['customer_code'])): ?><br><small class="text-muted"><?php echo $row['customer_code']; ?></small><?php endif; ?><?php endif; ?>
                                         </td>
                                         <?php
                                     $q_grand = floatval($row['grand_total'] ?? 0);
@@ -383,9 +382,12 @@ function openViewModal(id) {
             html += statusBadgeHtml(q.status);
             html += '</div>';
             
+            var qCustName = q.walk_in_customer_name ? (q.walk_in_customer_name + ' <small class="text-muted">(Walk-In)</small>') : (c.customer_name + '<small class="text-muted">' + (c.customer_code || '') + '</small>');
+            var qMobile = q.walk_in_customer_phone ? q.walk_in_customer_phone : (c.mobile || '-');
+            
             html += '<div class="row mb-3">';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + c.customer_name + '</div><small class="text-muted">' + (c.customer_code || '') + '</small></div></div>';
-            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + (c.mobile || '-') + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Customer</div><div class="view-info-value">' + qCustName + '</div></div></div>';
+            html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Mobile</div><div class="view-info-value">' + qMobile + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Quotation Date</div><div class="view-info-value">' + q.quotation_date + '</div></div></div>';
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Valid Until</div><div class="view-info-value">' + (q.valid_until || '-') + '</div></div></div>';
             html += '<div class="col-md-4 mb-2"><div class="view-info-card"><div class="view-info-label">Payment Method</div><div class="view-info-value text-uppercase">' + q.payment_type + (q.bank_name ? ' (' + q.bank_name + ')' : '') + '</div></div></div>';

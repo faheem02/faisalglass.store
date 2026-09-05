@@ -76,7 +76,7 @@ $(document).ready(function() {
         columns: [
             { data: 'hold_no' },
             { data: 'hold_date' },
-            { data: 'customer_name' },
+            { data: 'customer_name', render: (data, type, row) => row.walk_in_customer_name ? '<span class="font-weight-bold">' + row.walk_in_customer_name + '</span> <small class="text-info">(Walk-In)</small>' : data },
             { data: 'grand_total', render: data => '₨ ' + parseFloat(data).toFixed(2) },
             { data: 'status', render: data => `<span class="badge badge-${data=='hold'?'warning':(data=='converted'?'success':'secondary')}">${data}</span>` },
             { data: 'created_by_name' },
