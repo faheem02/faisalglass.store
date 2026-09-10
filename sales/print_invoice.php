@@ -89,8 +89,8 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         body {
             font-family: 'Poppins', sans-serif;
             background: #eef1f5;
-            color: #212529;
-            font-size: 13px;
+            color: #1a1a1a;
+            font-size: 17px;
             line-height: 1.6;
         }
         .invoice-container {
@@ -114,22 +114,22 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         }
         .brand-left { display: flex; align-items: center; gap: 14px; }
         .brand-logo {
-            width: 54px;
-            height: 54px;
+            width: 62px;
+            height: 62px;
             background: #1e7e34;
             color: #fff;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 800;
             letter-spacing: 1px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .brand-name {
-            font-size: 21px;
+            font-size: 25px;
             font-weight: 700;
             color: #14532d;
             letter-spacing: 0.3px;
@@ -137,18 +137,18 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             line-height: 1.2;
         }
         .brand-tagline {
-            font-size: 11px;
-            color: #6b7280;
+            font-size: 14px;
+            color: #374151;
             letter-spacing: 0.5px;
         }
         .company-contact-info {
             text-align: right;
-            font-size: 11px;
-            color: #374151;
+            font-size: 14px;
+            color: #1f2937;
             line-height: 1.8;
         }
         .company-contact-info .contact-line { white-space: nowrap; }
-        .company-contact-info i { color: #1e7e34; width: 16px; }
+        .company-contact-info i { color: #1e7e34; width: 18px; }
 
         /* ===== Invoice Title ===== */
         .invoice-title {
@@ -156,8 +156,8 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             align-items: center;
             justify-content: center;
             gap: 14px;
-            font-size: 17px;
-            font-weight: 700;
+            font-size: 22px;
+            font-weight: 800;
             color: #14532d;
             letter-spacing: 4px;
             margin: 8px 0 16px;
@@ -185,7 +185,7 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             max-width: 58%;
         }
         .meta-sub-header {
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 700;
             color: #1e7e34;
             letter-spacing: 1.5px;
@@ -193,21 +193,21 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             margin-bottom: 4px;
         }
         .meta-customer-name {
-            font-size: 17px;
+            font-size: 22px;
             font-weight: 700;
             color: #111827;
             margin-bottom: 3px;
             line-height: 1.3;
         }
         .meta-customer-code {
-            font-size: 11px;
-            color: #6b7280;
+            font-size: 14px;
+            color: #4b5563;
             margin-bottom: 5px;
-            font-weight: 500;
+            font-weight: 600;
         }
         .meta-customer-detail {
-            font-size: 12px;
-            color: #374151;
+            font-size: 15px;
+            color: #1f2937;
             line-height: 1.6;
             display: flex;
             align-items: baseline;
@@ -215,8 +215,8 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         }
         .meta-customer-detail i {
             color: #1e7e34;
-            width: 14px;
-            font-size: 11px;
+            width: 18px;
+            font-size: 14px;
         }
         .meta-invoice-box {
             min-width: 270px;
@@ -224,10 +224,10 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         .meta-invoice-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 15px;
         }
         .meta-invoice-table td {
-            padding: 4px 8px;
+            padding: 5px 8px;
             border-bottom: 1px solid #f0f3f2;
         }
         .meta-invoice-table tr:last-child td {
@@ -235,49 +235,49 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         }
         .meta-invoice-table .meta-label {
             font-weight: 600;
-            color: #6b7280;
+            color: #4b5563;
             text-transform: uppercase;
-            font-size: 10.5px;
+            font-size: 12px;
             letter-spacing: 0.5px;
             width: 45%;
         }
         .meta-invoice-table .meta-value {
-            font-weight: 600;
+            font-weight: 700;
             color: #111827;
             text-align: right;
         }
 
         .remarks-box {
             margin-bottom: 12px;
-            padding: 9px 14px;
+            padding: 11px 16px;
             background: #fff7e6;
             border: 1px solid #ffd591;
             border-left: 4px solid #fa8c16;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 15px;
         }
 
         /* ===== Products Table ===== */
         .invoice-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11.5px;
+            font-size: 15px;
             margin-top: 4px;
         }
         .invoice-table th {
             background: #1e7e34;
             color: #fff;
-            padding: 9px 6px;
+            padding: 10px 8px;
             text-align: center;
             border: 1px solid #166d2e;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: 0.5px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .invoice-table td {
-            padding: 8px 6px;
-            border: 1px solid #e5e7eb;
+            padding: 10px 8px;
+            border: 1px solid #d1d5db;
             vertical-align: middle;
         }
         .invoice-table tbody tr:nth-child(even) { background: #f6f9f7; }
@@ -286,20 +286,21 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         .size-subheader th {
             background: #0f6bb5;
             border: 1px solid #0f6bb5;
-            font-size: 10px;
-            padding: 6px;
-            font-weight: 500;
+            font-size: 13px;
+            padding: 8px;
+            font-weight: 600;
         }
         .table-footer {
             background: #e8f5e9;
             font-weight: 700;
             border-top: 2px solid #1e7e34;
+            font-size: 15px;
         }
         .product-group-row td {
             background: #eaf5eb !important;
             border-top: 2px solid #1e7e34 !important;
             border-bottom: 1px solid #c3e6cb !important;
-            padding: 8px 10px !important;
+            padding: 10px 12px !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -307,20 +308,20 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 12px;
+            font-size: 15px;
             font-weight: 700;
             color: #155724;
         }
         .product-group-badge {
             background: #1e7e34;
             color: #fff;
-            padding: 2px 7px;
+            padding: 3px 9px;
             border-radius: 4px;
-            font-size: 9.5px;
+            font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-right: 6px;
+            margin-right: 8px;
             display: inline-block;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -330,16 +331,16 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             border-top: 1px solid #d1e7dd !important;
             border-bottom: 2px solid #cbd5e1 !important;
             font-weight: 700;
-            font-size: 11.5px;
+            font-size: 14px;
             color: #1b4332;
-            padding: 6px 8px !important;
+            padding: 8px 10px !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
         /* ===== Payment Summary ===== */
         .payment-breakdown {
-            width: 380px;
+            width: 430px;
             margin: 22px 0 10px auto;
             border: 1px solid #d1d5db;
             border-radius: 6px;
@@ -348,28 +349,28 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         .payment-head {
             background: #1e7e34;
             color: #fff;
-            font-size: 12px;
+            font-size: 15px;
             font-weight: 700;
             letter-spacing: 1.5px;
-            padding: 8px 14px;
+            padding: 10px 14px;
             text-align: center;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .payment-body { padding: 4px 14px 8px; }
+        .payment-body { padding: 4px 16px 10px; }
         .payment-row {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            padding: 6px 0;
+            padding: 7px 0;
             border-bottom: 1px dotted #cbd5e1;
-            font-size: 12px;
+            font-size: 15px;
         }
         .payment-label { font-weight: 600; color: #374151; }
         .payment-value { font-variant-numeric: tabular-nums; }
         .payment-row:last-child { border-bottom: none; }
         .grand-total-row { font-weight: 700; }
-        .grand-total-row .payment-value { color: #1e7e34; font-size: 13.5px; }
+        .grand-total-row .payment-value { color: #1e7e34; font-size: 16px; }
 
         /* ===== Footer ===== */
         .invoice-footer {
@@ -380,12 +381,12 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             padding-top: 14px;
             border-top: 1px solid #e5e7eb;
         }
-        .signature-block { text-align: center; width: 220px; }
-        .sig-line { border-bottom: 1.5px solid #374151; height: 34px; margin-bottom: 4px; }
-        .sig-label { font-size: 11px; color: #6b7280; letter-spacing: 0.5px; }
+        .signature-block { text-align: center; width: 240px; }
+        .sig-line { border-bottom: 2px solid #1f2937; height: 38px; margin-bottom: 4px; }
+        .sig-label { font-size: 14px; color: #374151; letter-spacing: 0.5px; font-weight: 600; }
         .thank-you {
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
             color: #1e7e34;
             letter-spacing: 0.5px;
             text-align: right;
@@ -471,7 +472,7 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             <table class="meta-invoice-table">
                 <tr>
                     <td class="meta-label">Invoice No:</td>
-                    <td class="meta-value font-weight-bold text-success" style="font-size: 14px;"><?php echo $sale['invoice_no']; ?></td>
+                    <td class="meta-value font-weight-bold text-success" style="font-size: 17px;"><?php echo $sale['invoice_no']; ?></td>
                 </tr>
                 <tr>
                     <td class="meta-label">Invoice Date:</td>
@@ -556,7 +557,7 @@ while($detail = mysqli_fetch_assoc($details_result)) {
                                 <small class="text-muted" style="font-weight: normal;">(<?php echo htmlspecialchars($group['product_code']); ?>)</small>
                             <?php endif; ?>
                         </span>
-                        <span style="font-size: 11px; font-weight: normal; color: #155724;">
+                        <span style="font-size: 13px; font-weight: normal; color: #155724;">
                             <?php echo count($group['items']); ?> <?php echo count($group['items']) === 1 ? 'size' : 'sizes'; ?>
                         </span>
                     </div>
@@ -610,38 +611,50 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     <div class="payment-breakdown">
         <div class="payment-head">PAYMENT SUMMARY</div>
         <div class="payment-body">
+            <?php if(floatval($previous_balance) != 0): ?>
             <div class="payment-row">
                 <span class="payment-label">Previous Balance:</span>
                 <span class="payment-value">Rs <?php echo number_format($previous_balance, 2); ?></span>
             </div>
+            <?php endif; ?>
             <div class="payment-row">
                 <span class="payment-label">Subtotal:</span>
                 <span class="payment-value">Rs <?php echo number_format($sale['subtotal'], 2); ?></span>
             </div>
+            <?php if(floatval($sale['discount_amount']) != 0): ?>
             <div class="payment-row">
                 <span class="payment-label">Discount (<?php echo number_format($sale['discount_percentage'], 2); ?>%):</span>
                 <span class="payment-value">- Rs <?php echo number_format($sale['discount_amount'], 2); ?></span>
             </div>
+            <?php endif; ?>
+            <?php if(floatval($sale['other_charges']) != 0): ?>
             <div class="payment-row">
                 <span class="payment-label">Other Charges:</span>
                 <span class="payment-value">+ Rs <?php echo number_format($sale['other_charges'], 2); ?></span>
             </div>
+            <?php endif; ?>
             <div class="payment-row grand-total-row">
                 <span class="payment-label">Grand Total:</span>
                 <span class="payment-value">Rs <?php echo number_format($sale['grand_total'], 2); ?></span>
             </div>
+            <?php if(floatval($sale['received_amount']) != 0): ?>
             <div class="payment-row">
                 <span class="payment-label">Paid Amount:</span>
                 <span class="payment-value">Rs <?php echo number_format($sale['received_amount'], 2); ?></span>
             </div>
+            <?php endif; ?>
+            <?php if(floatval($sale['remaining_amount']) != 0): ?>
             <div class="payment-row">
                 <span class="payment-label">Remaining:</span>
                 <span class="payment-value">Rs <?php echo number_format($sale['remaining_amount'], 2); ?></span>
             </div>
+            <?php endif; ?>
+            <?php if(floatval($new_balance) != 0): ?>
             <div class="payment-row grand-total-row">
                 <span class="payment-label">New Balance:</span>
                 <span class="payment-value">Rs <?php echo number_format($new_balance, 2); ?></span>
             </div>
+            <?php endif; ?>
         </div>
     </div>
     

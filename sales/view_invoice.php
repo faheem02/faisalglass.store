@@ -77,7 +77,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
         .btn-green{background:#1e7e34;border-color:#1e7e34;color:white}.btn-green:hover{background:#155724}
         .btn-refund{background:#ffc107;border-color:#ffc107;color:#1a1a1a}.btn-refund:hover{background:#e0a800;color:#1a1a1a}
         .action-btns{display:flex;align-items:center;flex-wrap:nowrap;gap:4px}
-        .action-btns .btn{display:inline-flex;align-items:center;white-space:nowrap}
+        .action-btns .btn{display:inline-flex;align-items:center;white-space:nowrap;font-size:11px;padding:4px 6px}
         .card-header-custom{background:linear-gradient(135deg,#1e7e34,#0066cc);color:white;border-radius:10px 10px 0 0;padding:15px 20px}
         .summary-card{text-align:center;padding:20px;border-radius:10px;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
         .summary-number{font-size:28px;font-weight:bold}
@@ -197,6 +197,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
             <button class="btn btn-sm btn-info" title="View Sale" onclick="openViewModal(<?php echo $sale['id']; ?>)"><i class="fas fa-eye"></i></button>
             <a href="add_sale.php?edit_id=<?php echo $sale['id']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
             <button class="btn btn-sm btn-primary" title="Print" onclick="window.open('print_invoice.php?invoice_no=<?php echo urlencode($sale['invoice_no']); ?>', '_blank')"><i class="fas fa-print"></i></button>
+            <button class="btn btn-sm btn-secondary" title="Work Sheet (Without Rates)" onclick="window.open('print_delivery_challan.php?invoice_no=<?php echo urlencode($sale['invoice_no']); ?>', '_blank')"><i class="fas fa-truck"></i></button>
             <button class="btn btn-sm btn-danger" title="Delete" onclick="confirmDelete(<?php echo $sale['id']; ?>)"><i class="fas fa-trash"></i></button>
         </div>
     </td>
@@ -585,6 +586,7 @@ function openViewModal(id){
             $('#viewSaleFooter').html(
                 '<a href="add_sale.php?edit_id=' + s.id + '" class="btn btn-warning"><i class="fas fa-edit"></i> Edit</a>' +
                 '<a href="print_invoice.php?invoice_no=' + encodeURIComponent(s.invoice_no) + '" class="btn btn-primary" target="_blank"><i class="fas fa-print"></i> Print</a>' +
+                '<a href="print_delivery_challan.php?invoice_no=' + encodeURIComponent(s.invoice_no) + '" class="btn btn-secondary" target="_blank"><i class="fas fa-truck"></i> Work Sheet</a>' +
                 '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>'
             );
         },
