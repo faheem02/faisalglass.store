@@ -75,15 +75,44 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @media print {
-            .no-print { display: none !important; }
+            .no-print, .action-bar { display: none !important; }
             body { padding: 0; margin: 0; background: white; }
-            .invoice-container { margin: 0; box-shadow: none; padding: 0; }
+            .invoice-container { margin: 0 !important; box-shadow: none !important; padding: 0 !important; }
             @page { size: A4; margin: 12mm; }
             .invoice-table thead { display: table-header-group; }
             .invoice-table tr { page-break-inside: avoid; }
             .product-group-row td { background-color: #eaf5eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .product-subtotal-row td { background-color: #f8faf9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .table-footer td, .table-footer { background-color: #e8f5e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .remarks-box { 
+                margin: 8px 0 12px !important; 
+                padding: 8px 12px !important; 
+                border: 2px solid #b38600 !important; 
+                border-left: 6px solid #b38600 !important; 
+                background: #fffdf5 !important; 
+                display: flex !important;
+                align-items: center !important;
+                gap: 10px !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .remarks-badge {
+                background: #b38600 !important;
+                color: #fff !important;
+                font-size: 11px !important;
+                font-weight: 800 !important;
+                padding: 3px 8px !important;
+                border-radius: 3px !important;
+                letter-spacing: 0.5px !important;
+                white-space: nowrap !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .remarks-text {
+                font-size: 15px !important;
+                font-weight: 800 !important;
+                color: #000 !important;
+            }
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -248,13 +277,41 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         }
 
         .remarks-box {
-            margin-bottom: 12px;
-            padding: 11px 16px;
-            background: #fff7e6;
-            border: 1px solid #ffd591;
-            border-left: 4px solid #fa8c16;
+            margin-bottom: 14px;
+            padding: 10px 16px;
+            background: #fffdf5;
+            border: 2px solid #f0ad4e;
+            border-left: 8px solid #ec971f;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .remarks-badge {
+            background: #ec971f;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 5px 12px;
             border-radius: 4px;
-            font-size: 15px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .remarks-text {
+            font-size: 17px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: 0.5px;
+            word-break: break-word;
         }
 
         /* ===== Products Table ===== */
@@ -393,19 +450,24 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         }
 
         .action-bar {
-            position: fixed;
-            bottom: 0;
+            position: sticky;
+            top: 0;
             left: 0;
             right: 0;
             text-align: center;
-            padding: 12px;
-            background: rgba(255,255,255,0.96);
-            box-shadow: 0 -2px 12px rgba(0,0,0,0.12);
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.98);
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
             z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
         }
         .btn-action {
-            padding: 10px 24px;
-            margin: 0 8px;
+            padding: 9px 22px;
+            margin: 0 4px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -413,13 +475,26 @@ while($detail = mysqli_fetch_assoc($details_result)) {
             font-size: 14px;
             color: #fff;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            transition: all 0.2s;
         }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-print { background: #1e7e34; }
         .btn-pdf { background: #dc3545; }
         .btn-exit { background: #1a56db; }
     </style>
 </head>
 <body>
+
+<div class="action-bar no-print">
+    <button class="btn-action btn-print" onclick="window.print();"><i class="fas fa-print"></i> Print</button>
+    <button class="btn-action btn-pdf" id="downloadPDF"><i class="fas fa-file-pdf"></i> Download PDF</button>
+    <button class="btn-action btn-exit" id="exitBtn"><i class="fas fa-sign-out-alt"></i> Exit</button>
+</div>
+
 <div class="invoice-container" id="invoiceContent">
     
     <div class="company-header">
@@ -494,7 +569,8 @@ while($detail = mysqli_fetch_assoc($details_result)) {
     
     <?php if(!empty($sale['remarks'])): ?>
     <div class="remarks-box">
-        <strong>Remarks:</strong> <?php echo htmlspecialchars($sale['remarks']); ?>
+        <span class="remarks-badge"><i class="fas fa-tools mr-1"></i> WORK / REMARKS:</span>
+        <span class="remarks-text"><?php echo nl2br(htmlspecialchars($sale['remarks'])); ?></span>
     </div>
     <?php endif; ?>
     
@@ -666,12 +742,6 @@ while($detail = mysqli_fetch_assoc($details_result)) {
         </div>
         <div class="thank-you">Thank you for your business!</div>
     </div>
-</div>
-
-<div class="action-bar no-print">
-    <button class="btn-action btn-print" onclick="window.print();"><i class="fas fa-print"></i> Print</button>
-    <button class="btn-action btn-pdf" id="downloadPDF"><i class="fas fa-file-pdf"></i> Download PDF</button>
-    <button class="btn-action btn-exit" id="exitBtn"><i class="fas fa-sign-out-alt"></i> Exit</button>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

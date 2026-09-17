@@ -49,8 +49,19 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $new_received = $current_received + $amount;
                     $new_remaining = max(0, $current_remaining - $amount);
 
+                    // Update payment_type: If fully paid, update to payment_method (cash/bank); if partial, mark 'partial'
+                    $status_sql = "";
+                    if($new_remaining <= 0) {
+                        $status_sql = ", payment_type = '$payment_method'";
+                        if($payment_method === 'bank' && $bank_account_id > 0) {
+                            $status_sql .= ", bank_account_id = $bank_account_id";
+                        }
+                    } else {
+                        $status_sql = ", payment_type = 'partial'";
+                    }
+
                     // Update sale_master
-                    $update_sale = "UPDATE sale_master SET received_amount = $new_received, remaining_amount = $new_remaining WHERE id = $sale_id";
+                    $update_sale = "UPDATE sale_master SET received_amount = $new_received, remaining_amount = $new_remaining $status_sql WHERE id = $sale_id";
                     if(!mysqli_query($conn, $update_sale)) {
                         throw new Exception("Failed to update sale invoice: " . mysqli_error($conn));
                     }
@@ -65,10 +76,11 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Update customer current_balance and customer_ledger
                     if($customer_id > 0) {
-                        $cust_q = mysqli_query($conn, "SELECT current_balance FROM customers WHERE id = $customer_id");
+                        $cust_q = mysqli_query($conn, "SELECT customer_code, current_balance FROM customers WHERE id = $customer_id");
                         if($cust_q && mysqli_num_rows($cust_q) > 0) {
                             $cust_row = mysqli_fetch_assoc($cust_q);
-                            $new_cust_balance = floatval($cust_row['current_balance']) - $amount;
+                            $is_walkin_cust = (($cust_row['customer_code'] ?? '') === 'WALK-IN' || !empty($sale['walk_in_customer_name']));
+                            $new_cust_balance = $is_walkin_cust ? 0 : (floatval($cust_row['current_balance']) - $amount);
                             mysqli_query($conn, "UPDATE customers SET current_balance = $new_cust_balance WHERE id = $customer_id");
 
                             // Insert into customer_ledger

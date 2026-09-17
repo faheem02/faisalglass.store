@@ -205,7 +205,7 @@ if(isset($_POST['save_sale'])) {
                 $client_height = floatval($item['client_height'] ?? 0);
                 $client_width = floatval($item['client_width'] ?? 0);
                 $client_size = mysqli_real_escape_string($conn, $item['client_size'] ?? '');
-                $multiple = intval($item['multiple_of'] ?? 0);
+                $multiple = ($item['multiple_of'] === 'manual') ? 0 : intval($item['multiple_of'] ?? 0);
                 $std_height = mysqli_real_escape_string($conn, (string)($item['std_height'] ?? 0));
                 $std_width = mysqli_real_escape_string($conn, (string)($item['std_width'] ?? 0));
                 $uom = mysqli_real_escape_string($conn, $item['uom'] ?? '');
@@ -286,7 +286,22 @@ if(isset($_POST['save_sale'])) {
                 throw new Exception("Failed to update customer ledger: " . mysqli_error($conn));
             }
             
-            $update_customer = "UPDATE customers SET current_balance = $new_customer_balance WHERE id = $customer_id";
+            // Check if this is a walk-in customer
+            $check_walkin = mysqli_query($conn, "SELECT customer_code FROM customers WHERE id = $customer_id LIMIT 1");
+            $is_walkin_cust = false;
+            if($check_walkin && mysqli_num_rows($check_walkin) > 0) {
+                $c_row = mysqli_fetch_assoc($check_walkin);
+                if(($c_row['customer_code'] ?? '') === 'WALK-IN' || !empty($walk_in_customer_name)) {
+                    $is_walkin_cust = true;
+                }
+            }
+            
+            // For walk-in customer, current_balance must always remain 0
+            if($is_walkin_cust) {
+                $update_customer = "UPDATE customers SET current_balance = 0 WHERE id = $customer_id";
+            } else {
+                $update_customer = "UPDATE customers SET current_balance = $new_customer_balance WHERE id = $customer_id";
+            }
             mysqli_query($conn, $update_customer);
             
             // Update cash or bank book for received amount

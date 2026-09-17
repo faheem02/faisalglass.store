@@ -61,6 +61,8 @@ $sales_result = mysqli_query($conn, $sales_query);
 $summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total) as total_sale, SUM(received_amount) as total_received, SUM(remaining_amount) as total_remaining, COUNT(*) as total_count FROM sale_master WHERE sale_date BETWEEN '$from_date' AND '$to_date'"));
 $today_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total) as today_total FROM sale_master WHERE sale_date = CURDATE()"));
 $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total) as month_total FROM sale_master WHERE MONTH(sale_date) = MONTH(CURDATE()) AND YEAR(sale_date) = YEAR(CURDATE())"));
+$pending_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT customer_id) as pending_customers, COUNT(*) as pending_invoices, SUM(remaining_amount) as total_pending FROM sale_master WHERE status = 1 AND (refund_status IS NULL OR refund_status != 'full') AND remaining_amount > 0"));
+$walkin_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as walkin_count, SUM(s.grand_total) as walkin_total, SUM(s.received_amount) as walkin_received, SUM(s.remaining_amount) as walkin_remaining FROM sale_master s LEFT JOIN customers c ON s.customer_id = c.id WHERE (s.sale_date BETWEEN '$from_date' AND '$to_date') AND (c.customer_code = 'WALK-IN' OR (s.walk_in_customer_name IS NOT NULL AND s.walk_in_customer_name != ''))"));
 ?>
 
 <!DOCTYPE html>
@@ -86,6 +88,7 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
         .badge-pending{background:#dc3545;color:white;padding:5px 12px;border-radius:20px}
         .badge-refund{background:#17a2b8;color:white;padding:5px 12px;border-radius:20px}
         .table thead th{background:#1e7e34;color:white}
+        .text-purple{color:#6f42c1!important}
         .view-info-card { background: #f8faf9; border: 1px solid #e5e7eb; border-left: 3px solid #1e7e34; border-radius: 4px; padding: 8px 12px; }
         .view-info-label { font-size: 10px; font-weight: 700; color: #6b7280; letter-spacing: 1px; text-transform: uppercase; }
         .view-info-value { font-weight: 600; color: #111827; word-break: break-word; }
@@ -142,10 +145,12 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
 <body id="page-top"><div id="wrapper"><?php include('../includes/sidebar.php'); ?><div class="container-fluid">
 <div class="d-sm-flex align-items-center justify-content-between mb-4"><h1 class="h3 mb-0 text-gray-800"><i class="fas fa-file-invoice text-success mr-2"></i> View Sale Invoice</h1><div><a href="add_sale.php" class="btn btn-green"><i class="fas fa-plus-circle mr-1"></i> Add Sale</a></div></div>
 <div class="row">
-<div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-primary text-uppercase mb-1">Today's Sale</div><div class="summary-number text-primary"><?php echo formatCurrency($today_summary['today_total'] ?? 0); ?></div><small><?php echo date('d-m-Y'); ?></small></div></div>
-<div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-success text-uppercase mb-1">Monthly Sale</div><div class="summary-number text-success"><?php echo formatCurrency($month_summary['month_total'] ?? 0); ?></div><small><?php echo date('F Y'); ?></small></div></div>
-<div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-info text-uppercase mb-1">Selected Period</div><div class="summary-number text-info"><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></div><small><?php echo date('d-m-Y', strtotime($from_date)); ?> to <?php echo date('d-m-Y', strtotime($to_date)); ?></small></div></div>
-<div class="col-xl-3 col-md-6 mb-4"><div class="summary-card"><div class="text-warning text-uppercase mb-1">Outstanding</div><div class="summary-number text-warning"><?php echo formatCurrency($summary['total_remaining'] ?? 0); ?></div><small><?php echo $summary['total_count'] ?? 0; ?> Invoices</small></div></div>
+<div class="col-xl-4 col-md-6 mb-4"><div class="summary-card"><div class="text-primary text-uppercase mb-1">Today's Sale</div><div class="summary-number text-primary"><?php echo formatCurrency($today_summary['today_total'] ?? 0); ?></div><small><?php echo date('d-m-Y'); ?></small></div></div>
+<div class="col-xl-4 col-md-6 mb-4"><div class="summary-card"><div class="text-success text-uppercase mb-1">Monthly Sale</div><div class="summary-number text-success"><?php echo formatCurrency($month_summary['month_total'] ?? 0); ?></div><small><?php echo date('F Y'); ?></small></div></div>
+<div class="col-xl-4 col-md-6 mb-4"><div class="summary-card"><div class="text-info text-uppercase mb-1">Selected Period</div><div class="summary-number text-info"><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></div><small><?php echo date('d-m-Y', strtotime($from_date)); ?> to <?php echo date('d-m-Y', strtotime($to_date)); ?></small></div></div>
+<div class="col-xl-4 col-md-6 mb-4"><div class="summary-card"><div class="text-warning text-uppercase mb-1">Outstanding</div><div class="summary-number text-warning"><?php echo formatCurrency($summary['total_remaining'] ?? 0); ?></div><small><?php echo $summary['total_count'] ?? 0; ?> Invoices</small></div></div>
+<div class="col-xl-4 col-md-6 mb-4"><div class="summary-card"><div class="text-danger text-uppercase mb-1">Total Customer Pending</div><div class="summary-number text-danger"><?php echo formatCurrency($pending_summary['total_pending'] ?? 0); ?></div><small><?php echo $pending_summary['pending_customers'] ?? 0; ?> Customers | <?php echo $pending_summary['pending_invoices'] ?? 0; ?> Invoices</small></div></div>
+<div class="col-xl-4 col-md-6 mb-4"><div class="summary-card"><div class="text-purple text-uppercase mb-1">Walk-in Customers</div><div class="summary-number text-purple"><?php echo formatCurrency($walkin_summary['walkin_total'] ?? 0); ?></div><small><?php echo $walkin_summary['walkin_count'] ?? 0; ?> Invoices | Received: <?php echo formatCurrency($walkin_summary['walkin_received'] ?? 0); ?></small></div></div>
 </div>
 <div class="card form-card"><div class="card-header-custom"><i class="fas fa-filter mr-2"></i> Filter Sales</div><div class="card-body"><form method="GET" class="form-inline"><div class="row w-100"><div class="col-md-3"><input type="date" name="from_date" class="form-control w-100" value="<?php echo $from_date; ?>"></div><div class="col-md-3"><input type="date" name="to_date" class="form-control w-100" value="<?php echo $to_date; ?>"></div><div class="col-md-4"><select name="customer_id" class="form-control w-100"><option value="0">All Customers</option><?php while($c = mysqli_fetch_assoc($customers_result)): ?><option value="<?php echo $c['id']; ?>" <?php echo ($filter_customer == $c['id']) ? 'selected' : ''; ?>><?php echo $c['customer_name']; ?></option><?php endwhile; ?></select></div><div class="col-md-2"><button type="submit" class="btn btn-green w-100"><i class="fas fa-search"></i> Filter</button></div></div></form></div></div>
 <div class="card form-card"><div class="card-header-custom"><i class="fas fa-list mr-2"></i> Sale Invoices <span class="float-right">Total: <strong><?php echo formatCurrency($summary['total_sale'] ?? 0); ?></strong></span></div><div class="card-body"><div class="table-responsive"><table class="table table-bordered" id="salesTable"><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Received</th><th>Remaining</th><th>Reference No</th><th>Remarks</th><th>Status</th><th>Actions</th></tr></thead><tbody>
@@ -161,22 +166,38 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
     <td><?php echo $sale['remarks'] ? htmlspecialchars($sale['remarks']) : '-'; ?></td>
     <td class="text-center"><?php
         $pt = strtolower($sale['payment_type'] ?? 'cash');
+        $rem = floatval($sale['remaining_amount'] ?? 0);
+        $rec = floatval($sale['received_amount'] ?? 0);
+        $grand = floatval($sale['grand_total'] ?? 0);
+        
+        $status_data_attrs = 'class="badge cursor-pointer edit-status-badge" style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;" title="Click to Change Payment Status" ' .
+            'data-id="' . $sale['id'] . '" ' .
+            'data-invoice="' . htmlspecialchars($sale['invoice_no']) . '" ' .
+            'data-status="' . $pt . '" ' .
+            'data-total="' . $grand . '" ' .
+            'data-received="' . $rec . '" ' .
+            'data-remaining="' . $rem . '" ' .
+            'data-bank-id="' . intval($sale['bank_account_id'] ?? 0) . '"';
+
         if(($sale['refund_status'] ?? '') == 'full') {
             echo '<span class="badge badge-secondary" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-undo mr-1"></i> Refund</span>';
         } elseif(($sale['refund_status'] ?? '') == 'partial') {
             echo '<span class="badge badge-secondary" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-undo mr-1"></i> Refund (Part)</span>';
         } elseif(($sale['status'] ?? 1) == 0) {
             echo '<span class="badge badge-dark" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-ban mr-1"></i> Cancelled</span>';
-        } elseif($pt == 'cash') {
-            echo '<span class="badge badge-success" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-money-bill-wave mr-1"></i> Cash</span>';
-        } elseif($pt == 'bank') {
-            echo '<span class="badge badge-info" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-university mr-1"></i> Bank</span>';
-        } elseif($pt == 'credit') {
-            echo '<span class="badge badge-danger" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-clock mr-1"></i> Credit</span>';
-        } elseif($pt == 'partial') {
-            echo '<span class="badge badge-warning text-dark" style="padding:5px 12px;border-radius:20px;font-size:12px;"><i class="fas fa-adjust mr-1"></i> Partial</span>';
+        } elseif($rem <= 0) {
+            // Full payment received (whether originally cash, bank, or paid later)
+            if($pt == 'bank') {
+                echo '<span ' . $status_data_attrs . ' style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;background:#17a2b8;color:white;"><i class="fas fa-university mr-1"></i> Bank <i class="fas fa-pen ml-1" style="font-size:10px;opacity:0.8;"></i></span>';
+            } else {
+                echo '<span ' . $status_data_attrs . ' style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;background:#28a745;color:white;"><i class="fas fa-check-circle mr-1"></i> Paid' . ($pt == 'cash' ? ' (Cash)' : '') . ' <i class="fas fa-pen ml-1" style="font-size:10px;opacity:0.8;"></i></span>';
+            }
+        } elseif($rec > 0) {
+            // Partial payment
+            echo '<span ' . $status_data_attrs . ' style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;background:#ffc107;color:#212529;"><i class="fas fa-adjust mr-1"></i> Partial <i class="fas fa-pen ml-1" style="font-size:10px;opacity:0.8;"></i></span>';
         } else {
-            echo '<span class="badge badge-primary" style="padding:5px 12px;border-radius:20px;font-size:12px;">' . ucfirst($pt) . '</span>';
+            // Unpaid credit
+            echo '<span ' . $status_data_attrs . ' style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;background:#dc3545;color:white;"><i class="fas fa-clock mr-1"></i> Credit <i class="fas fa-pen ml-1" style="font-size:10px;opacity:0.8;"></i></span>';
         }
     ?></td>
     <td>
@@ -293,6 +314,74 @@ $month_summary = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(grand_total)
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success font-weight-bold" id="rec_submit_btn">
                         <i class="fas fa-check-circle mr-1"></i> Confirm Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Payment Status Modal -->
+<div class="modal fade" id="editStatusModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4e73df, #224abe); color: white;">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i> Update Payment Status</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editStatusForm">
+                <input type="hidden" name="sale_id" id="edit_status_sale_id">
+                <div class="modal-body p-4">
+                    <!-- Invoice Summary Card -->
+                    <div class="card bg-light border-0 mb-3" style="border-left: 4px solid #4e73df !important;">
+                        <div class="card-body py-2 px-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Invoice No</small>
+                                    <strong id="edit_status_invoice_no" class="text-primary font-weight-bold">-</strong>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <small class="text-muted d-block">Grand Total</small>
+                                    <strong id="edit_status_grand_total" class="text-dark font-weight-bold">₨ 0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold"><i class="fas fa-toggle-on text-primary mr-1"></i> Payment Status</label>
+                        <select name="payment_type" id="edit_status_type" class="form-control form-control-lg font-weight-bold">
+                            <option value="cash">Cash (Fully Paid)</option>
+                            <option value="bank">Bank (Fully Paid)</option>
+                            <option value="credit">Credit (Unpaid)</option>
+                            <option value="partial">Partial Payment</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="edit_status_bank_group" style="display: none;">
+                        <label class="font-weight-bold"><i class="fas fa-university text-info mr-1"></i> Select Bank Account</label>
+                        <select name="bank_account_id" id="edit_status_bank_account_id" class="form-control">
+                            <option value="">-- Select Bank Account --</option>
+                            <?php foreach($bank_accounts as $ba): ?>
+                                <option value="<?php echo $ba['id']; ?>">
+                                    <?php echo htmlspecialchars($ba['bank_name'] . ' (' . ($ba['account_number'] ?? $ba['account_title']) . ')'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="edit_status_partial_group" style="display: none;">
+                        <label class="font-weight-bold"><i class="fas fa-coins text-warning mr-1"></i> Received Amount (₨)</label>
+                        <input type="number" step="0.01" min="0" name="received_amount" id="edit_status_received" class="form-control font-weight-bold" placeholder="Enter received amount">
+                        <small class="text-muted mt-1 d-block">Remaining balance: <strong id="edit_status_calculated_remaining" class="text-danger">₨ 0.00</strong></small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary font-weight-bold" id="edit_status_submit_btn">
+                        <i class="fas fa-save mr-1"></i> Save Changes
                     </button>
                 </div>
             </form>
@@ -471,6 +560,10 @@ function openViewModal(id){
             html += '<div class="col-md-3 mb-2"><div class="view-info-card"><div class="view-info-label">Status</div><div class="view-info-value">' + (s.remaining_amount <= 0 ? 'Paid' : (s.received_amount > 0 ? 'Partial' : 'Pending')) + '</div></div></div>';
             html += '</div>';
             
+            if(s.remarks && s.remarks.trim() !== ''){
+                html += '<div class="alert alert-warning py-2 px-3 mb-3 font-weight-bold" style="border-left: 5px solid #d39e00; background: #fffdf5; color: #1a1a1a; font-size: 14px;"><i class="fas fa-tools mr-1 text-warning"></i> <span class="text-uppercase text-muted mr-1" style="font-size: 11px; letter-spacing: 0.5px;">Work / Remarks:</span> ' + escapeHtml(s.remarks) + '</div>';
+            }
+            
             if(response.items.length > 0){
                 // Group items by product
                 var productGroups = {};
@@ -595,6 +688,93 @@ function openViewModal(id){
         }
     });
 }
+
+// Edit Status click
+$(document).on('click', '.edit-status-badge', function(){
+    const saleId = $(this).data('id');
+    const invoiceNo = $(this).data('invoice');
+    const status = $(this).data('status');
+    const total = parseFloat($(this).data('total')) || 0;
+    const received = parseFloat($(this).data('received')) || 0;
+    const remaining = parseFloat($(this).data('remaining')) || 0;
+    const bankId = $(this).data('bank-id');
+
+    $('#edit_status_sale_id').val(saleId);
+    $('#edit_status_invoice_no').text(invoiceNo);
+    $('#edit_status_grand_total').text('₨ ' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+    $('#edit_status_type').val(status);
+    $('#edit_status_bank_account_id').val(bankId || '');
+    $('#edit_status_received').val(received > 0 ? received : '');
+
+    function updatePartialCalc() {
+        const rec = parseFloat($('#edit_status_received').val()) || 0;
+        const rem = Math.max(0, total - rec);
+        $('#edit_status_calculated_remaining').text('₨ ' + rem.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+    }
+
+    function toggleStatusFields() {
+        const val = $('#edit_status_type').val();
+        if(val === 'bank') {
+            $('#edit_status_bank_group').show();
+            $('#edit_status_partial_group').hide();
+        } else if(val === 'partial') {
+            $('#edit_status_bank_group').show();
+            $('#edit_status_partial_group').show();
+            updatePartialCalc();
+        } else {
+            $('#edit_status_bank_group').hide();
+            $('#edit_status_partial_group').hide();
+        }
+    }
+
+    $('#edit_status_type').off('change').on('change', toggleStatusFields);
+    $('#edit_status_received').off('input keyup').on('input keyup', updatePartialCalc);
+    toggleStatusFields();
+
+    $('#editStatusModal').modal('show');
+});
+
+// Submit Edit Status Form
+$('#editStatusForm').on('submit', function(e){
+    e.preventDefault();
+    const btn = $('#edit_status_submit_btn');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+
+    $.ajax({
+        url: 'update_sale_status.php',
+        type: 'POST',
+        data: $(this).serialize(),
+        dataType: 'json',
+        success: function(res){
+            btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Changes');
+            if(res.success){
+                $('#editStatusModal').modal('hide');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: res.message,
+                    timer: 1500
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: res.message
+                });
+            }
+        },
+        error: function(){
+            btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Changes');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to update status. Please try again.'
+            });
+        }
+    });
+});
 
 function formatCurrency(amount){
     return 'Rs ' + parseFloat(amount).toFixed(2);

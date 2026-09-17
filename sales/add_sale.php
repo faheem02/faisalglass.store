@@ -403,10 +403,14 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
                                 <select name="customer_id" id="customer_id" class="form-control" style="width: 100%;">
                                     <option value="">-- Select or Type to Search Customer --</option>
                                     <?php while($cust = mysqli_fetch_assoc($customers_result)): ?>
+                                        <?php 
+                                            $is_cust_walkin = ($cust['customer_code'] == 'WALK-IN' || stripos($cust['customer_name'], 'Walk-in') !== false || stripos($cust['customer_name'], 'Walk in') !== false);
+                                            $cust_bal = $is_cust_walkin ? 0 : $cust['current_balance'];
+                                        ?>
                                         <option value="<?php echo $cust['id']; ?>" 
                                                 data-mobile="<?php echo $cust['mobile']; ?>"
-                                                data-balance="<?php echo $cust['current_balance']; ?>"
-                                                <?php echo ($cust['customer_code'] == 'WALK-IN' || strpos($cust['customer_name'], 'Walk-in') !== false) ? 'data-walkin="1"' : ''; ?>>
+                                                data-balance="<?php echo $cust_bal; ?>"
+                                                <?php echo $is_cust_walkin ? 'data-walkin="1"' : ''; ?>>
                                             <?php echo htmlspecialchars($cust['customer_name'] . ' (' . $cust['customer_code'] . ')'); ?>
                                         </option>
                                     <?php endwhile; ?>
@@ -441,10 +445,41 @@ while ($rp = mysqli_fetch_assoc($row_products_result)) {
                     <input type="hidden" name="walk_in_customer_phone" id="walk_in_customer_phone" value="<?php echo $edit_data ? htmlspecialchars($edit_data['walk_in_customer_phone']) : ''; ?>">
                     
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label><i class="fas fa-tools text-success mr-1"></i> Select Remarks / Work</label>
+                                <select id="remarks_select" class="form-control font-weight-bold">
+                                    <option value="">-- Select Remarks / Work --</option>
+                                    <option value="Simple">Simple</option>
+                                    <option value="Polish">Polish</option>
+                                    <option value="A.L.P">A.L.P</option>
+                                    <option value="D.S.P">D.S.P</option>
+                                    <option value="Tempered Glass">Tempered Glass</option>
+                                    <option value="Polish & Tempered">Polish & Tempered</option>
+                                    <option value="Gola">Gola</option>
+                                    <option value="Cona Gol">Cona Gol</option>
+                                    <option value="Double .D">Double .D</option>
+                                    <option value="Single .D">Single .D</option>
+                                    <option value="Diamond Wall">Diamond Wall</option>
+                                    <option value="Design wall">Design wall</option>
+                                    <option value="½ inche">½ inche</option>
+                                    <option value="1 inche lap">1 inche lap</option>
+                                    <option value="1¼ inche lap">1¼ inche lap</option>
+                                    <option value="1½ inche lap">1½ inche lap</option>
+                                    <option value="2 inche lap">2 inche lap</option>
+                                    <option value="Gol  Lap 1 inche">Gol  Lap 1 inche</option>
+                                    <option value="Farmma">Farmma</option>
+                                    <option value="Lap & polish">Lap & polish</option>
+                                    <option value="single OG">single OG</option>
+                                    <option value="Double OG">Double OG</option>
+                                    <option value="custom">Other / Custom...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
                             <div class="form-group">
                                 <label><i class="fas fa-comment text-success mr-1"></i> Remarks</label>
-                                <textarea name="remarks" class="form-control" rows="2" placeholder="Enter remarks"><?php echo $edit_data ? htmlspecialchars($edit_data['remarks']) : ''; ?></textarea>
+                                <textarea name="remarks" id="remarks_textarea" class="form-control font-weight-bold" rows="1" placeholder="Selected remarks or write custom"><?php echo $edit_data ? htmlspecialchars($edit_data['remarks']) : ''; ?></textarea>
                             </div>
                         </div>
                     </div>
@@ -688,6 +723,17 @@ function calculateArea(height, width) {
     return 0;
 }
 
+function getMultipleOptions(selected = 6) {
+    let opts = [3, 6, 9, 12, 24];
+    let isManual = (selected === 'manual' || selected === 0 || selected === '0');
+    let html = '';
+    $.each(opts, function(i, val) {
+        html += `<option value="${val}" ${(!isManual && selected == val) ? 'selected' : ''}>${val}</option>`;
+    });
+    html += `<option value="manual" ${isManual ? 'selected' : ''}>Manual</option>`;
+    return html;
+}
+
 // Add new product group (product dropdown at top, sizes below)
 function addProductGroup(savedRate = null) {
     const groupId = productGroupId++;
@@ -739,8 +785,7 @@ function addProductGroup(savedRate = null) {
                                 <td><input type="number" step="0.01" class="form-control quantity" data-group-id="${groupId}" data-row-id="0" value="1" min="0.01"></td>
                                 <td>
                                     <select class="form-control multiple-of" data-group-id="${groupId}" data-row-id="0">
-                                        <option value="3">3</option><option value="6" selected>6</option>
-                                        <option value="9">9</option><option value="12">12</option><option value="24">24</option>
+                                        ${getMultipleOptions(6)}
                                     </select>
                                 </td>
                                 <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="0" readonly style="background:#f0f8ff;" placeholder="Std H" value=""></td>
@@ -850,8 +895,7 @@ function addSizeRow(groupId) {
             <td><input type="number" step="0.01" class="form-control quantity" data-group-id="${groupId}" data-row-id="${newRowId}" value="1" min="0.01"></td>
             <td>
                 <select class="form-control multiple-of" data-group-id="${groupId}" data-row-id="${newRowId}">
-                    <option value="3">3</option><option value="6" selected>6</option>
-                    <option value="9">9</option><option value="12">12</option><option value="24">24</option>
+                    ${getMultipleOptions(6)}
                 </select>
              </td>
             <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="${newRowId}" readonly style="background:#f0f8ff;" placeholder="Std H" value=""></td>
@@ -871,16 +915,41 @@ function addSizeRow(groupId) {
 
 // Bind events for size rows in a group
 function bindSizeRowEvents(groupId) {
-    // Client size + multiple change
-    $(`.client-height[data-group-id="${groupId}"], .client-width[data-group-id="${groupId}"], .multiple-of[data-group-id="${groupId}"]`).off('keyup change').on('keyup change', function() {
+    // Client size change
+    $(`.client-height[data-group-id="${groupId}"], .client-width[data-group-id="${groupId}"]`).off('keyup change input').on('keyup change input', function() {
         const rowId = $(this).data('row-id');
-        updateStdAndArea(groupId, rowId);
+        updateStdAndArea(groupId, rowId, false);
         calculateRowAmount(groupId, rowId);
         calculateAllTotals();
     });
+
+    // Multiple-of dropdown change
+    $(`.multiple-of[data-group-id="${groupId}"]`).off('change').on('change', function() {
+        const rowId = $(this).data('row-id');
+        updateStdAndArea(groupId, rowId, true);
+        calculateRowAmount(groupId, rowId);
+        calculateAllTotals();
+    });
+
+    // Manual Std Height and Width change
+    $(`.std-height[data-group-id="${groupId}"], .std-width[data-group-id="${groupId}"]`).off('keyup change input').on('keyup change input', function() {
+        const rowId = $(this).data('row-id');
+        const multipleVal = $(`.multiple-of[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val();
+        if (multipleVal === 'manual') {
+            const stdH = parseFloat($(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val()) || 0;
+            const stdW = parseFloat($(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val()) || 0;
+            const area = calculateArea(stdH, stdW);
+            
+            $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>' + area.toFixed(2) + '</strong><br><small>sq ft</small>');
+            $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', area);
+            
+            calculateRowAmount(groupId, rowId);
+            calculateAllTotals();
+        }
+    });
     
     // Quantity, rate, discount change
-    $(`.quantity[data-group-id="${groupId}"], .rate[data-group-id="${groupId}"], .discount[data-group-id="${groupId}"]`).off('keyup change').on('keyup change', function() {
+    $(`.quantity[data-group-id="${groupId}"], .rate[data-group-id="${groupId}"], .discount[data-group-id="${groupId}"]`).off('keyup change input').on('keyup change input', function() {
         const rowId = $(this).data('row-id');
         calculateRowAmount(groupId, rowId);
         calculateAllTotals();
@@ -895,27 +964,51 @@ function bindSizeRowEvents(groupId) {
 }
 
 // Update std dimensions and area
-function updateStdAndArea(groupId, rowId) {
+function updateStdAndArea(groupId, rowId, multipleChanged = false) {
     const rawH = $(`.client-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val();
     const rawW = $(`.client-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val();
     const clientH = parseFloat(rawH) || 0;
     const clientW = parseFloat(rawW) || 0;
-    const multiple = parseInt($(`.multiple-of[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val()) || 6;
+    const multipleVal = $(`.multiple-of[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val();
+    const stdHInput = $(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`);
+    const stdWInput = $(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`);
     
-    if (clientH > 0 && clientW > 0) {
-        const stdH = roundUpToMultiple(clientH, multiple);
-        const stdW = roundUpToMultiple(clientW, multiple);
+    if (multipleVal === 'manual') {
+        stdHInput.prop('readonly', false).css({'background': '#ffffff', 'cursor': 'text'});
+        stdWInput.prop('readonly', false).css({'background': '#ffffff', 'cursor': 'text'});
+        
+        if (multipleChanged) {
+            if (!stdHInput.val() && clientH > 0) stdHInput.val(clientH);
+            if (!stdWInput.val() && clientW > 0) stdWInput.val(clientW);
+            stdHInput.focus();
+        }
+        
+        const stdH = parseFloat(stdHInput.val()) || 0;
+        const stdW = parseFloat(stdWInput.val()) || 0;
         const area = calculateArea(stdH, stdW);
         
-        $(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(stdH);
-        $(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(stdW);
         $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>' + area.toFixed(2) + '</strong><br><small>sq ft</small>');
         $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', area);
     } else {
-        $(`.std-height[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(clientH > 0 ? roundUpToMultiple(clientH, multiple) : '');
-        $(`.std-width[data-group-id="${groupId}"][data-row-id="${rowId}"]`).val(clientW > 0 ? roundUpToMultiple(clientW, multiple) : '');
-        $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>0.00</strong><br><small>sq ft</small>');
-        $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', 0);
+        stdHInput.prop('readonly', true).css({'background': '#f0f8ff', 'cursor': 'not-allowed'});
+        stdWInput.prop('readonly', true).css({'background': '#f0f8ff', 'cursor': 'not-allowed'});
+        
+        const multiple = parseInt(multipleVal) || 6;
+        if (clientH > 0 && clientW > 0) {
+            const stdH = roundUpToMultiple(clientH, multiple);
+            const stdW = roundUpToMultiple(clientW, multiple);
+            const area = calculateArea(stdH, stdW);
+            
+            stdHInput.val(stdH);
+            stdWInput.val(stdW);
+            $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>' + area.toFixed(2) + '</strong><br><small>sq ft</small>');
+            $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', area);
+        } else {
+            stdHInput.val(clientH > 0 ? roundUpToMultiple(clientH, multiple) : '');
+            stdWInput.val(clientW > 0 ? roundUpToMultiple(clientW, multiple) : '');
+            $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).html('<strong>0.00</strong><br><small>sq ft</small>');
+            $(`.area-cell[data-group-id="${groupId}"][data-row-id="${rowId}"]`).data('value', 0);
+        }
     }
 }
 
@@ -1204,6 +1297,7 @@ function populateHoldForm(res) {
     
     $('#other_charges').val(res.other_charges);
     $('textarea[name="remarks"]').val(res.remarks || '');
+    syncRemarksSelect();
     
     // Clear existing product groups
     $('#productGroupsContainer').empty();
@@ -1264,6 +1358,8 @@ function addSizeRowWithData(groupId, item) {
     const amt = totArea * rate;
     const netAmt = amt - (amt * (discPct / 100));
     
+    const isManual = (item.multiple_of === 'manual' || item.multiple_of === 0 || item.multiple_of === '0');
+    
     const newRow = `
         <tr class="size-row" data-row-id="${newRowId}" data-group-id="${groupId}">
             <td>
@@ -1277,14 +1373,14 @@ function addSizeRowWithData(groupId, item) {
             </td>
             <td><input type="number" step="0.01" class="form-control quantity" data-group-id="${groupId}" data-row-id="${newRowId}" value="${item.quantity}"></td>
             <td><select class="form-control multiple-of" data-group-id="${groupId}" data-row-id="${newRowId}">${getMultipleOptions(item.multiple_of)}</select></td>
-            <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="${newRowId}" readonly value="${item.std_height}"></td>
-            <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="${newRowId}" readonly value="${item.std_width}"></td>
-            <td class="area-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${perUnitArea.toFixed(2)}</strong><br><small>sq ft</small></td>
-            <td class="total-area-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${totArea.toFixed(2)}</strong><br><small>sq ft</small></td>
+            <td><input type="number" step="0.01" class="form-control std-height" data-group-id="${groupId}" data-row-id="${newRowId}" ${isManual ? '' : 'readonly'} style="${isManual ? 'background:#ffffff;' : 'background:#f0f8ff;'}" placeholder="Std H" value="${item.std_height}"></td>
+            <td><input type="number" step="0.01" class="form-control std-width" data-group-id="${groupId}" data-row-id="${newRowId}" ${isManual ? '' : 'readonly'} style="${isManual ? 'background:#ffffff;' : 'background:#f0f8ff;'}" placeholder="Std W" value="${item.std_width}"></td>
+            <td class="area-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${perUnitArea.toFixed(2)}</strong><br><small>sq ft</small></td>
+            <td class="total-area-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>${totArea.toFixed(2)}</strong><br><small>sq ft</small></td>
             <td><input type="number" step="0.01" class="form-control rate" data-group-id="${groupId}" data-row-id="${newRowId}" value="${rate}"></td>
-            <td class="amount-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${amt.toFixed(2)}</strong></td>
+            <td class="amount-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${amt.toFixed(2)}</strong></td>
             <td><input type="number" step="0.01" class="form-control discount" data-group-id="${groupId}" data-row-id="${newRowId}" value="${discPct}"></td>
-            <td class="net-amount-cell" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${netAmt.toFixed(2)}</strong></td>
+            <td class="net-amount-cell text-right" data-group-id="${groupId}" data-row-id="${newRowId}"><strong>₨ ${netAmt.toFixed(2)}</strong></td>
             <td><button type="button" class="btn btn-sm btn-danger remove-size-row" data-group-id="${groupId}" data-row-id="${newRowId}"><i class="fas fa-trash"></i></button></td>
         </tr>
     `;
@@ -1297,15 +1393,6 @@ function addSizeRowWithData(groupId, item) {
     $(`.net-amount-cell[data-group-id="${groupId}"][data-row-id="${newRowId}"]`).data('value', netAmt);
     
     bindSizeRowEvents(groupId);
-}
-
-function getMultipleOptions(selected) {
-    let opts = [3,6,9,12,24];
-    let html = '';
-    $.each(opts, function(i, val) {
-        html += `<option value="${val}" ${selected == val ? 'selected' : ''}>${val}</option>`;
-    });
-    return html;
 }
 
 // Delete hold bill
@@ -1451,16 +1538,17 @@ $(document).ready(function() {
     // Customer change event
     $('#customer_id').on('change', function() {
         const selected = $(this).find(':selected');
+        const isWalkin = (selected.data('walkin') == '1' || selected.text().toLowerCase().includes('walk-in') || selected.text().toLowerCase().includes('walk in') || ($('#walk_in_customer_name').val() && $('#walk_in_customer_name').val().trim() !== ''));
         const mobile = selected.data('mobile') || '-';
-        const balance = selected.data('balance') || 0;
+        const balance = isWalkin ? 0 : (parseFloat(selected.data('balance')) || 0);
         const customerId = $(this).val();
         
-        $('#customer_mobile').text(mobile);
+        $('#customer_mobile').text(isWalkin && $('#walk_in_customer_phone').val() ? $('#walk_in_customer_phone').val() : mobile);
         $('#customer_balance').text('₨ ' + parseFloat(balance).toFixed(2));
         $('#prevBalance').text('₨ ' + parseFloat(balance).toFixed(2));
         $('#prevBalance').data('value', balance);
         // Clear walk-in details if a non-walk-in customer is selected
-        if(selected.data('walkin') != '1') {
+        if(!isWalkin) {
             $('#walk_in_customer_name').val('');
             $('#walk_in_customer_phone').val('');
         }
@@ -1478,6 +1566,52 @@ $(document).ready(function() {
         calculateAllTotals();
     });
     
+    // Remarks dropdown change
+    $('#remarks_select').on('change', function() {
+        const val = $(this).val();
+        if(val && val !== 'custom') {
+            $('#remarks_textarea').val(val);
+        } else if(val === 'custom') {
+            $('#remarks_textarea').val('').focus();
+        }
+    });
+
+    // Remarks textarea manual change
+    $('#remarks_textarea').on('input', function() {
+        const text = $(this).val().trim();
+        let matched = false;
+        $('#remarks_select option').each(function() {
+            if($(this).val() && $(this).val().toLowerCase() === text.toLowerCase()) {
+                $('#remarks_select').val($(this).val());
+                matched = true;
+                return false;
+            }
+        });
+        if(!matched && text !== '') {
+            $('#remarks_select').val('custom');
+        } else if(text === '') {
+            $('#remarks_select').val('');
+        }
+    });
+
+    function syncRemarksSelect() {
+        const text = $('#remarks_textarea').val().trim();
+        let matched = false;
+        $('#remarks_select option').each(function() {
+            if($(this).val() && $(this).val().toLowerCase() === text.toLowerCase()) {
+                $('#remarks_select').val($(this).val());
+                matched = true;
+                return false;
+            }
+        });
+        if(!matched && text !== '') {
+            $('#remarks_select').val('custom');
+        } else if(text === '') {
+            $('#remarks_select').val('');
+        }
+    }
+    syncRemarksSelect();
+
     $('#other_charges, #received_amount').on('keyup change', function() { calculateAllTotals(); });
     $('#refreshBtn').on('click', function() { location.reload(); });
     
@@ -1587,14 +1721,52 @@ $('#generateInvoiceBtn').on('click', function(e) {
         dataType: 'json',
         success: function(response) {
             if(response.success) {
-                Swal.fire({ 
-                    title: 'Success!', 
-                    text: response.message, 
-                    icon: 'success', 
-                    confirmButtonColor: '#1e7e34' 
-                }).then((result) => {
-                    if(result.isConfirmed) {
-                        window.location.href = 'print_invoice.php?invoice_no=' + response.invoice_no;
+                Swal.fire({
+                    title: '<span style="font-size:22px; font-weight:700; color:#1e7e34;"><i class="fas fa-check-circle mr-2"></i>Sale Saved Successfully!</span>',
+                    html: `
+                        <div class="p-2 text-center" style="font-size: 15px;">
+                            <div class="mb-3 py-2 px-3 bg-light rounded" style="border: 1px dashed #ced4da;">
+                                Invoice No: <strong class="text-primary font-weight-bold" style="font-size:18px;">${response.invoice_no}</strong>
+                            </div>
+                            <p class="font-weight-bold text-dark mb-3" style="font-size: 16px;">
+                                Which document would you like to print?
+                            </p>
+                            <div class="d-flex flex-column" style="gap: 10px;">
+                                <button type="button" id="btnPrintSaleInvoice" class="btn btn-lg btn-success text-left d-flex align-items-center justify-content-between px-3 py-2" style="font-weight: 600; border-radius: 6px;">
+                                    <span><i class="fas fa-file-invoice mr-2"></i> Sale Invoice (With Rates)</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                                <button type="button" id="btnPrintWorkSheet" class="btn btn-lg btn-info text-left d-flex align-items-center justify-content-between px-3 py-2" style="font-weight: 600; border-radius: 6px;">
+                                    <span><i class="fas fa-truck mr-2"></i> Work Sheet (Without Rates)</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                                <button type="button" id="btnPrintBoth" class="btn btn-outline-primary text-left d-flex align-items-center justify-content-between px-3 py-2" style="font-weight: 600; border-radius: 6px;">
+                                    <span><i class="fas fa-copy mr-2"></i> Both (Invoice &amp; Work Sheet)</span>
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                                <button type="button" id="btnGoToInvoices" class="btn btn-light border text-muted px-3 py-2 mt-1" style="border-radius: 6px;">
+                                    <i class="fas fa-list mr-1"></i> View Invoices List (No Print)
+                                </button>
+                            </div>
+                        </div>
+                    `,
+                    showConfirmButton: false,
+                    showCancelButton: false,
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        $('#btnPrintSaleInvoice').on('click', function() {
+                            window.location.href = 'print_invoice.php?invoice_no=' + encodeURIComponent(response.invoice_no);
+                        });
+                        $('#btnPrintWorkSheet').on('click', function() {
+                            window.location.href = 'print_delivery_challan.php?invoice_no=' + encodeURIComponent(response.invoice_no);
+                        });
+                        $('#btnPrintBoth').on('click', function() {
+                            window.open('print_delivery_challan.php?invoice_no=' + encodeURIComponent(response.invoice_no), '_blank');
+                            window.location.href = 'print_invoice.php?invoice_no=' + encodeURIComponent(response.invoice_no);
+                        });
+                        $('#btnGoToInvoices').on('click', function() {
+                            window.location.href = 'view_invoice.php';
+                        });
                     }
                 });
             } else {
